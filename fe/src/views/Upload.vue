@@ -1,52 +1,62 @@
 <template>
   <div class="main-container">
     <div class="heading">
-        <h1>Upload File</h1>
-      </div>
+      <h1>Upload File</h1>
+    </div>
     <div class="upload-page-container">
-      <div class="upload-container">
-        <el-upload ref="uploadRef" class="upload-demo" action="" :auto-upload="false" :show-file-list="false"
-          accept=".csv" @change="handleFileChange">
-          <template #trigger>
-            <el-button id="file_input" type="success" @click="triggerFileUpload">Select
-              File</el-button>
-          </template>
-          <template #tip>
-            <div class="upload-tip">csv files with a size less than 500MB</div>
-          </template>
-        </el-upload>
-        <div v-if="fileName" class="file-name">{{ fileName }}</div>
-        <div v-if="errorMessage" class="error-message">{{ errorMessage }}
+      <!-- <div class="upload-container"> -->
+
+      <el-upload ref="uploadRef" class="upload-demo" action="" :auto-upload="false" :show-file-list="false"
+        accept=".csv" @change="handleFileChange">
+        <template #trigger>
+          <el-button id="file_input" @click="triggerFileUpload">Select
+            File</el-button>
+        </template>
+        <template #tip>
+          <div class="upload-tip">csv files with a size less than 500MB</div>
+        </template>
+      </el-upload>
+      <div v-if="fileName" class="file-name">{{ fileName }}</div>
+      <div v-if="errorMessage" class="error-message">{{ errorMessage }}
+      </div>
+      <div class="table-and-buttons-container"
+        v-if="tableData.length > 0 && columns.length > 0 && columns[0].prop !== 'placeholder'">
+        <div class="tablecsv">
+          <el-table ref="multipleTableRef" row-key="id" @selection-change="handleSelectionChange" :data="tableData"
+            stripe height="500" style="width: 100%;" scrollbar-always-on :border="true">
+            <el-table-column type="index" label="#" width="50" fixed /> <template
+              v-if="columns.length > 0 && columns[0].prop !== 'placeholder'">
+              <el-table-column v-for="column in columns" :key="column.prop" :prop="column.prop" :label="column.label"
+                min-width="150" show-overflow-tooltip /> </template>
+          </el-table>
         </div>
-        <div class="table-and-buttons-container"
-          v-if="tableData.length > 0 && columns.length > 0 && columns[0].prop !== 'placeholder'">
-          <div class="tablecsv">
-            <el-table ref="multipleTableRef" row-key="id" @selection-change="handleSelectionChange" :data="tableData"
-              stripe height="500" style="width: 100%;" scrollbar-always-on :border="true">
-              <el-table-column type="index" label="#" width="50" fixed /> <template
-                v-if="columns.length > 0 && columns[0].prop !== 'placeholder'">
-                <el-table-column v-for="column in columns" :key="column.prop" :prop="column.prop" :label="column.label"
-                  min-width="150" show-overflow-tooltip /> </template>
-            </el-table>
-          </div>
-          <div class="action-buttons" style="margin-top: 20px; display: flex; gap: 10px;">
-            <el-button class="accept-btn" type="primary" @click="acceptAllData()">Accept All</el-button>
-            <el-button class="reject-btn" @click="rejectAllData()">Reject</el-button>
-          </div>
+        <div class="action-buttons" style="margin-top: 20px; display: flex; gap: 10px;">
+          <el-button class="accept-btn" type="primary" @click="acceptAllData()">Accept All</el-button>
+          <el-button class="reject-btn" @click="rejectAllData()">Reject</el-button>
         </div>
-        <div v-else-if="!fileName && !errorMessage" class="empty-state">
-          <p>No file selected yet.</p>
-        </div>
-        <div
-          v-else-if="fileName && (tableData.length === 0 || (columns.length === 1 && columns[0].prop === 'placeholder')) && !errorMessage"
-          class="empty-state">
-          <p>File selected but no data or valid columns found.</p>
-        </div>
+      </div>
+      <div v-else-if="!fileName && !errorMessage" class="empty-state">
+        <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path
+            d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-2.82 0-5.27 1.63-6.51 4C3.5 8.36 2 10.36 2 12.5 2 14.71 3.79 16.5 6 16.5h13.5c2.21 0 4-1.79 4-4 0-2.04-1.53-3.72-3.15-3.96zM19.35 12.5H6c-1.38 0-2.5-1.12-2.5-2.5 0-1.13.76-2.09 1.85-2.36L6.5 7.75c.13-.1.28-.19.43-.27C8.09 6.88 9.94 6.5 12 6.5c2.62 0 4.88 1.86 5.39 4.34.07.34.4.56.76.56h.75c1.38 0 2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5H6c-1.38 0-2.5-1.12-2.5-2.5 0-1.13.76-2.09 1.85-2.36L6.5 12.5z" />
+        </svg>
+        <p>No file selected yet.</p>
+      </div>
+      <div
+        v-else-if="fileName && (tableData.length === 0 || (columns.length === 1 && columns[0].prop === 'placeholder')) && !errorMessage"
+        class="empty-state">
+
+        <p>File selected but no data or valid columns found.</p>
+        <!-- </div> -->
       </div>
 
       <MessageBox :visible="showMessageBox" :title="messageBoxTitle" :content="messageBoxContent" :type="messageBoxType"
         @close="handleMessageBoxClose" />
-
+      <div class="back-button-container">
+        <button @click="goBack" class="balh-btn back-btn">
+          Back
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -56,6 +66,8 @@ import { ref } from 'vue';
 import Papa from 'papaparse';
 // Import the new MessageBox component
 import MessageBox from './MessageBox.vue'; // Adjust the path as needed
+import { useRouter } from 'vue-router';
+const router = useRouter();
 
 const errorMessage = ref(null); // For initial file/parsing errors
 const multipleTableRef = ref(null);
@@ -74,12 +86,8 @@ const apiResponseData = ref(null); // Store API success data temporarily
 const apiErrorMessage = ref(null); // Store API error message temporarily
 const dataToSendToApi = ref([]); // Store accepted data after validation
 const validationErrors = ref([]); // Store validation errors temporarily
-// Note: rejectedRows and acceptedRows are now used *only* for API URL parameters,
-// not necessarily for the validation message summary anymore.
 const rejectedRows = ref([]); // Local tracking for validation/summary, sent to API implicitly
 const acceptedRows = ref([]); // Local tracking for validation/summary, sent to API implicitly
-// --- End New/Modified State ---
-
 
 let file_id = 0;
 let total_record;
@@ -119,6 +127,9 @@ const headingMap = {
   "customer cnic number": "customer_cnic_number"
 };
 
+const goBack = () => {
+  router.push('/main');
+}
 const triggerFileUpload = () => {
   if (uploadRef.value) {
     console.log("uploadRef.value: ", uploadRef.value);
@@ -588,23 +599,21 @@ const triggerAcceptApiCall = async (dataArray) => {
 
     messageBoxTitle.value = "Upload Result"; // Title for API response
     messageBoxType.value = "success";
+    console.log("====> data: ", data.data.length);
 
-    // Construct the message using API response data, assuming keys like accepted_count, rejected_count
     const apiMessage = data.message || 'Process completed successfully.';
-    const acceptedCount = data.accepted_count !== undefined ? data.accepted_count : 'N/A'; // Use 0 if not provided? Or N/A?
-    const rejectedCount = data.rejected_count !== undefined ? data.rejected_count : 'N/A'; // Use 0 if not provided? Or N/A?
+    const acceptedCount = data.data.length !== undefined ? data.data.length : 0;
+    const rejectedCount = data.data.length !== undefined ? (total_record - data.data.length) : 0;
 
     messageBoxContent.value = `${apiMessage}<br>Total accepted: ${acceptedCount}<br>Total rejected: ${rejectedCount}`;
 
-    messageBoxPurpose.value = 'apiResponse'; // Set purpose to API response
-    showMessageBox.value = true; // Show the API response message box
+    messageBoxPurpose.value = 'apiResponse';
+    showMessageBox.value = true;
 
-    // Clear table data and related states after successful API processing
     resetAfterProcess();
 
 
   } catch (error) {
-    // API Error - Prepare API response message box
     apiResponseData.value = null;
     apiErrorMessage.value = error.message || 'An unknown error occurred during acceptance.';
 
@@ -612,13 +621,10 @@ const triggerAcceptApiCall = async (dataArray) => {
     messageBoxType.value = "error";
     messageBoxContent.value = apiErrorMessage.value; // Just show the error message
 
-    messageBoxPurpose.value = 'apiResponse'; // Set purpose to API response
-    showMessageBox.value = true; // Show the API response message box
-
-    // Do NOT clear table/file state on API error
+    messageBoxPurpose.value = 'apiResponse';
+    showMessageBox.value = true;
   }
-  // isLoading is handled by makeApiRequest's finally block
-  dataToSendToApi.value = []; // Clear the temp data after API call attempt
+  dataToSendToApi.value = [];
 };
 
 
@@ -628,13 +634,13 @@ const resetAfterProcess = () => {
   columns.value = [];
   fileName.value = '';
   mappedObjects.value = [];
-  rejectedRows.value = []; // Clear frontend rejected/accepted counts after successful API
+  rejectedRows.value = [];
   acceptedRows.value = [];
   total_record = 0;
   file_id = 0;
   errorMessage.value = null; // Clear file error too
   dataToSendToApi.value = []; // Should already be cleared by triggerAcceptApiCall, but safety.
-  validationErrors.value = []; // Clear validation errors too
+  validationErrors.value = [];
   apiResponseData.value = null;
   apiErrorMessage.value = null;
   // messageBox state is reset in handleMessageBoxClose
@@ -943,62 +949,157 @@ const acceptAllData = async () => {
   console.log("Rejected Row Indices:", currentAcceptedRowsIndices);
 
   // Store validation results in state variables to be used after message box is closed
-  validationErrors.value = currentValidationErrors; // Store the error objects
-  dataToSendToApi.value = currentAcceptedDataForApi; // Store the formatted accepted data
-  rejectedRows.value = currentRejectedRowsIndices; // Store 1-based indices for API param
-  acceptedRows.value = currentAcceptedRowsIndices; // Store 1-based indices for API param
+  validationErrors.value = currentValidationErrors;
+  dataToSendToApi.value = currentAcceptedDataForApi;
+  rejectedRows.value = currentRejectedRowsIndices;
+  acceptedRows.value = currentAcceptedRowsIndices;
 
 
   // Prepare and show the Validation Message Box
-  let validationContent = "";
   if (validationErrors.value.length > 0) {
-    validationContent = formatValidationErrorMessage(validationErrors.value);
     messageBoxTitle.value = "Validation Warnings";
     messageBoxType.value = "warning";
+    messageBoxContent.value = formatValidationErrorMessage(validationErrors.value);
+    messageBoxPurpose.value = 'validation'; // Set purpose to validation message
+    showMessageBox.value = true;
+
   } else {
-    validationContent = "Frontend validation successful. No validation errors found.";
-    messageBoxTitle.value = "Validation Successful";
-    messageBoxType.value = "success";
+    triggerAcceptApiCall(dataToSendToApi.value);
   }
 
-  // **DO NOT add the summary counts here**
-
-  messageBoxContent.value = validationContent;
-  messageBoxPurpose.value = 'validation'; // Set purpose to validation message
-  showMessageBox.value = true; // Show the validation message box
-
-  // The process continues in handleMessageBoxClose after the user clicks OK.
 };
 
 
 </script>
 
 <style scoped>
-/* General Layout and Typography */
-.main-container{
-  background-color: #f9f9f9;
+.upload-icon {
+  width: 50px;
+  /* Adjust size as needed */
+  height: 50px;
+  /* Adjust size as needed */
+  fill: white;
+  /* Icon color */
+  margin-bottom: 10px;
+  /* Space between icon and text */
 }
+
+#file_input {
+  background-color: #29f98e;
+  color: black;
+  border: 0.5px solid #29f98e
+}
+
+.back-button-container {
+  margin-top: 1rem;
+  width: 100%;
+
+}
+
+.balh-btn.back-btn {
+  background-color: #d1d6da;
+  color: var(--balh-white);
+  max-width: 150px;
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
+}
+
+.balh-btn.back-btn:hover:not(.disabled) {
+  background-color: #afb9c0;
+  /* Darker grey on hover */
+  transform: translateY(-3px);
+  /* Subtle lift for back button */
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+.balh-btn {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  /* Add transform to transition */
+  width: 100%;
+  max-width: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  /* Initial subtle shadow */
+}
+
+.balh-btn:hover:not(.disabled) {
+  transform: translateY(-5px);
+  /* Lift effect */
+  box-shadow: var(--balh-hover-shadow);
+  /* Enhanced shadow on hover */
+}
+
+
+.balh-btn-icon {
+  margin-right: 8px;
+}
+
+.balh-btn.primary {
+  background-color: var(--balh-primary-green);
+  color: var(--balh-white);
+}
+
+.balh-btn.primary:hover:not(.disabled) {
+  background-color: #199666;
+  /* Slightly darker green */
+}
+
+.balh-btn.secondary {
+  background-color: var(--balh-light-grey-bg);
+  color: var(--balh-grey-text);
+  border: 1px solid var(--balh-border-grey);
+}
+
+.balh-btn.secondary:hover:not(.disabled) {
+  background-color: #e0e0e0;
+}
+
+.balh-btn.disabled {
+  background-color: var(--balh-disabled-grey);
+  color: var(--balh-disabled-text);
+  cursor: not-allowed;
+  box-shadow: none;
+  border: 1px solid var(--balh-disabled-grey);
+  transform: none;
+  /* No lift effect when disabled */
+}
+
+.balh-btn.disabled:hover {
+  transform: none;
+  /* Ensure no transform on hover when disabled */
+  box-shadow: none;
+  /* Ensure no shadow change on hover when disabled */
+}
+
+
+.main-container {
+  height: 94vh;
+  background-color: var(--balh-white);
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
 .upload-page-container {
   font-family: 'Arial', sans-serif;
-  color: #333;
-  background-color: #f9f9f9;
-  min-height: 75vh;
-    /* Use min-height for full page background */
-  padding: 15px;
-  /* Added some padding */
+  min-height: 80vh;
+  padding: 1vh 10vh 0vh 10vh;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  /* Center content horizontally */
 }
 
 .heading {
   text-align: center;
-  margin-bottom: 20px;
-  color: #007a3b;
+  color: #29f98e;
   width: 100%;
-  /* Ensure heading takes full width */
 }
 
 .heading h1 {
@@ -1018,8 +1119,6 @@ const acceptAllData = async () => {
   /* Increased gap */
   width: 100%;
   justify-content: flex-start;
-  margin-bottom: 20px;
-  /* Increased margin */
 }
 
 .upload-container .el-upload {
@@ -1054,20 +1153,12 @@ const acceptAllData = async () => {
   /* Standard font size */
 }
 
-.upload-tip {
-  color: #666;
-  margin-top: 5px;
-  font-size: 0.9em;
-  /* Slightly larger font size */
-  text-align: left;
-  width: 100%;
-  /* Ensure tip takes full width */
-}
+
 
 .file-name {
   margin-top: 10px;
   font-weight: bold;
-  color: #007a3b;
+  color: #29f98e;
   text-align: left;
   width: 100%;
   word-break: break-all;
@@ -1092,11 +1183,8 @@ const acceptAllData = async () => {
 
 /* Table Section */
 .table-and-buttons-container {
-  margin-top: 25px;
-  /* Increased margin */
   width: 100%;
   max-width: 1500px;
-  /* Keep max-width for large screens */
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -1107,16 +1195,11 @@ const acceptAllData = async () => {
 .tablecsv {
   width: 100%;
   overflow-x: auto;
-  /* Keep horizontal scrolling for wide tables */
-  max-height: 500px;
-  /* Keep max height for internal table scrolling */
+  max-height: 60vh;
   overflow-y: hidden;
-  /* Let el-table handle vertical scrolling */
   box-sizing: border-box;
   border: 1px solid #cccccc;
-  /* Add border to the container */
   border-radius: 4px;
-  /* Match table border-radius */
 }
 
 .el-table {
@@ -1211,7 +1294,7 @@ const acceptAllData = async () => {
   --el-button-hover-border-color: #007a3b;
   --el-button-hover-bg-color: #007a3b;
   --el-button-active-border-color: #007a3b;
-  --el-button-active-bg-color: #007a3b;
+  --el-button-active-bg-color: #007a66;
 }
 
 .accept-btn {
@@ -1253,7 +1336,7 @@ const acceptAllData = async () => {
   /* Increased margin */
   text-align: center;
   color: #666;
-  width: 100%;
+  width: 94vw;
   font-size: 1em;
   padding: 20px;
   /* Added padding */
@@ -1428,21 +1511,14 @@ button {
   cursor: pointer;
 }
 
-/* Media Queries for larger screens */
 @media (min-width: 768px) {
-  .upload-page-container {
-    padding: 20px;
-    /* Standard padding */
-  }
 
   .heading h1 {
     font-size: 2.2em;
-    /* Larger heading */
   }
 
   .upload-container {
     padding: 30px;
-    /* More padding on larger screens */
   }
 
   .upload-demo {
@@ -1472,7 +1548,6 @@ button {
   }
 
   .file-name {
-    margin-top: 15px;
     font-size: 1.1em;
   }
 
@@ -1481,26 +1556,6 @@ button {
     padding: 12px;
     font-size: 1em;
   }
-
-  .table-and-buttons-container {
-    margin-top: 30px;
-  }
-
-  .tablecsv {
-    overflow-x: visible;
-    /* Allow table to grow */
-    max-height: none;
-    /* Remove max-height constraint */
-    overflow-y: visible;
-    /* Remove scrollbar from container */
-  }
-
-  .el-table {
-    /* height="500" will still make the internal body scroll, consider removing if max-height on container is gone */
-    height: auto !important;
-    /* Override fixed height with auto */
-  }
-
 
   .el-table td.el-table__cell,
   .el-table th.el-table__cell {
@@ -1539,17 +1594,17 @@ button {
 
   /* Message Box */
   .el-overlay.is-message-box {
-    padding: 20px;
-    /* Standard padding */
+    /* Flexbox centering remains active */
+    background-color: rgba(0, 0, 0, 0.5);
+    /* Keep backdrop */
   }
 
   .el-message-box {
     width: 500px;
-    /* Fixed width */
+    /* Revert to fixed width or adjust max-width */
     max-width: none;
-    /* Remove max-width percentage */
-    max-height: 80vh;
-    /* Revert max-height if needed */
+    /* Remove max-width */
+    /* Remove top, left, transform */
   }
 
   .el-message-box__header {
@@ -1557,32 +1612,26 @@ button {
   }
 
   .el-message-box__title {
-    font-size: 1.2em;
+    font-size: 1.1em;
   }
 
   .el-message-box__content {
-    padding: 20px 24px;
+    padding: 24px;
   }
 
   .el-message-box__container {
-    max-height: calc(80vh - 130px);
-    /* Adjust calculation */
+    max-height: calc(80vh - 120px);
+    /* Revert calculation */
     padding-right: 10px;
   }
 
   .p-text {
+    line-height: 1.6;
     font-size: 1em;
-    /* Standard font size */
   }
 
   .el-message-box__btns {
-    padding: 15px 24px;
-    gap: 15px;
-  }
-
-  .el-message-box__btns .el-button {
-    padding: 10px 20px;
-    font-size: 1em;
+    padding: 15px 24px 15px 0;
   }
 }
 
@@ -1630,8 +1679,8 @@ button {
 
 .heading {
   text-align: center;
-  margin-bottom: 20px;
-  color: #007a3b;
+  margin-top: 10px;
+  color: #29f98e;
 }
 
 .heading h1 {
@@ -1647,7 +1696,7 @@ button {
   /* Adjusted margin with vw */
   padding: 15px;
   /* Reduced padding */
-  background-color: #fff;
+  /* background-color: #fff; */
   border-radius: 4px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.08);
   display: flex;
@@ -1655,7 +1704,7 @@ button {
   align-items: center;
   text-align: left;
   /* max-height: fit-content; */
-  width: 85%;
+  width: 100%;
   /* Use percentage for width */
   box-sizing: border-box;
   /* Include padding in element's total width */
@@ -1689,7 +1738,7 @@ button {
 }
 
 .upload-tip {
-  color: #666;
+  color: #e9e7e7;
   margin-top: 5px;
   /* Adjusted margin */
   font-size: 0.8em;
@@ -1698,15 +1747,7 @@ button {
   width: 100%;
 }
 
-.file-name {
-  margin-top: 10px;
-  /* Adjusted margin */
-  font-weight: bold;
-  color: #007a3b;
-  text-align: left;
-  width: 100%;
-  word-break: break-all;
-}
+
 
 .error-message {
   margin-top: 10px;
@@ -1724,24 +1765,20 @@ button {
   word-break: break-word;
 }
 
+/* --- Base Table Styles (Applied to all screen sizes unless overridden) --- */
 .tablecsv {
-  margin-top: 15px;
   width: 100%;
   max-width: 1500px;
   overflow-x: auto;
-  /* Keep horizontal scrolling for wide tables */
-  max-height: 500px;
-  /* Set a max height for the table container */
+  max-height: 60vh;
   overflow-y: auto;
-  /* Enable vertical scrolling for the container */
   box-sizing: border-box;
 }
 
 .el-table {
   width: 100%;
-  /* Ensure table takes full width of its container */
-  /* The height="500" attribute on the el-table component in your template
-     makes the table body scroll internally within that height. */
+  /* Ensure table tries to take full width of its container */
+  /* If table content is wider than container, overflow-x: auto on parent handles it */
 }
 
 .el-table td.el-table__cell,
@@ -1799,13 +1836,6 @@ button {
   height: 0;
 }
 
-/* Add rounded corners to the top of the table header */
-.el-table--border .el-table__header-wrapper {
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
-  overflow: hidden;
-}
-
 /* Add subtle bottom border to the entire table */
 .el-table--border {
   border: 1px solid #cccccc;
@@ -1842,12 +1872,13 @@ button {
 }
 
 .empty-state {
+  background-color: rgba(0, 0, 0, 0.15);
   margin-top: 15px;
   text-align: center;
-  color: #666;
+  color: white;
   width: 100%;
   font-size: 1em;
-  height: 80%;
+  height: 60vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1992,10 +2023,6 @@ button {
 
 /* Media Queries for larger screens */
 @media (min-width: 768px) {
-  .upload-page-container {
-    /* padding: 20px; */
-  }
-
   .heading h1 {
     font-size: 2em;
   }
@@ -2018,28 +2045,14 @@ button {
     width: auto;
   }
 
-  .file-name {
-    margin-top: 15px;
-  }
-
   .error-message {
     margin-top: 15px;
     padding: 10px;
   }
 
-  .tablecsv {
-    margin-top: 20px;
-    overflow-x: visible;
-    max-height: none;
-    /* Remove max-height on larger screens */
-    overflow-y: visible;
-    /* Remove vertical scrolling on larger screens */
-  }
-
   .el-table td.el-table__cell,
   .el-table th.el-table__cell {
     padding: 12px 15px;
-    /* Revert/Adjust padding for larger screens */
   }
 
   .el-table td.el-table__cell {
@@ -2057,7 +2070,7 @@ button {
   }
 
   .tablecsv+div {
-    margin-top: 20px !important;
+    /* margin-top: 20px !important; */
     justify-content: flex-start;
     flex-wrap: nowrap;
   }

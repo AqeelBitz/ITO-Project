@@ -35,9 +35,6 @@ const router = useRouter();
 
 <style scoped>
 .el-main{
-  /* display: flex;
-  justify-content: center;
-  align-content: center; */
-
+  height: 100vh;
 }
 </style>
