@@ -1,4 +1,16 @@
 <template>
+  <div>
+    <header data-v-9562428a="" class="balh-headerr">
+      <div data-v-9562428a="" class="header-contentt">
+        <div>
+          <img data-v-9562428a="" src="/src/assets/download.png" alt="Bank Al Habib Logo" class="bahl-logoo">
+        </div>
+      </div>
+      <div>
+        <h1 data-v-9562428a="" class="balh-titlee">CONSIGNMENT TRACKING SYSTEM</h1>
+      </div>
+    </header>
+  </div>
   <div class="main-container">
     <div class="heading">
       <h1>Upload File</h1>
@@ -36,11 +48,14 @@
         </div>
       </div>
       <div v-else-if="!fileName && !errorMessage" class="empty-state">
-        <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-          <path
-            d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-2.82 0-5.27 1.63-6.51 4C3.5 8.36 2 10.36 2 12.5 2 14.71 3.79 16.5 6 16.5h13.5c2.21 0 4-1.79 4-4 0-2.04-1.53-3.72-3.15-3.96zM19.35 12.5H6c-1.38 0-2.5-1.12-2.5-2.5 0-1.13.76-2.09 1.85-2.36L6.5 7.75c.13-.1.28-.19.43-.27C8.09 6.88 9.94 6.5 12 6.5c2.62 0 4.88 1.86 5.39 4.34.07.34.4.56.76.56h.75c1.38 0 2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5H6c-1.38 0-2.5-1.12-2.5-2.5 0-1.13.76-2.09 1.85-2.36L6.5 12.5z" />
-        </svg>
-        <p>No file selected yet.</p>
+        <div class="upload-empty-container">
+          <div style="font-size: 90px; padding-right: 15px;">
+            <el-icon class="el-icon--upload" viewBox="0 0 24 24"><upload-filled /></el-icon>
+          </div>
+          <div>
+            <p>No file selected yet.</p>
+          </div>
+        </div>
       </div>
       <div
         v-else-if="fileName && (tableData.length === 0 || (columns.length === 1 && columns[0].prop === 'placeholder')) && !errorMessage"
@@ -973,6 +988,35 @@ const acceptAllData = async () => {
 </script>
 
 <style scoped>
+.balh-titlee {
+  text-align: center;
+  margin: 0;
+}
+
+.bahl-logoo {
+  height: 60px;
+}
+
+.balh-headerr { 
+  display: flex;
+  flex-direction: row;
+  align-items: center; 
+  width: 100%; 
+  padding: 0 20px;
+  box-sizing: border-box; 
+}
+
+.balh-headerr > div:nth-child(2) {
+  margin-left: auto;
+  margin-right: auto;
+}
+.upload-empty-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+
 .upload-icon {
   width: 50px;
   /* Adjust size as needed */
@@ -1081,7 +1125,7 @@ const acceptAllData = async () => {
 
 
 .main-container {
-  height: 94vh;
+  height: 85vh;
   background-color: var(--balh-white);
   border-radius: 8px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
