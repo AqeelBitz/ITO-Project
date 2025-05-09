@@ -142,10 +142,16 @@ app.post('/fsm/consignments/reject', async (req, res) => {
   const fileName = req.query.fileName;
   const recordCount = parseInt(req.query.recordCount);
   const userId = parseInt(req.query.userId);
+  const accept_record_count = parseInt(req.query.accept_record_count);
+  const reject_record_count = parseInt(req.query.reject_record_count);
+  const rejectedRows = req.query.rejectedRows;
+  const acceptedRows = req.query.acceptedRows;
+  const uploadedBy = req.query.uploadedBy;
+  const fileType = req.query.fileType;
   const authToken = req.headers.authorization;
   // console.log("AuthToken: ",AuthToken.authorization)
   // console.log("Header: ",AuthToken)
-  
+  console.log("params: ", req.query);
 
   // console.log("----> request body: ", req.body);
   // const allConsginment = req.body;
@@ -154,42 +160,19 @@ app.post('/fsm/consignments/reject', async (req, res) => {
   // console.log("------> consignmentid_Type: ",typeof(allConsginment[0].consignment_id));
   console.log("------> recordCount type: ",typeof(recordCount));
   console.log("------> userId type: ",typeof(userId));
-  
-  // const payload = allConsginment.map(consignment => ({
-  //   consignment_id: consignment.consignment_id,
-  //   courier: consignment.courier,
-  //   booking_date: consignment.booking_date,
-  //   account_no: consignment.account_no,
-  //   account_title: consignment.account_title,
-  //   receiver_cnic: consignment.receiver_cnic, 
-  //   shipping_bill: consignment.shipping_bill,
-  //   address: consignment.address,
-  //   city: consignment.city,
-  //   email: consignment.email,
-  //   mobile_no: consignment.mobile_no,
-  //   letter_type: consignment.letter_type,
-  //   card_no: consignment.card_no,
-  //   card_type: consignment.card_type,
-  //   card_creation_date: consignment.card_creation_date,
-  //   return_reason: consignment.return_reason, 
-  //   return_date: consignment.return_date,
-  //   branch_cd: consignment.branch_cd, 
-  //   receiver_name_b: consignment.receiver_name_b,
-  //   delivery_date: consignment.delivery_date,
-  //   status: consignment.status, 
-  //   receiver_name_d: consignment.receiver_name_d, 
-  //   relationship: consignment.relationship, 
-  //   card_status: consignment.card_status, 
-  //   customer_cnic_number: consignment.customer_cnic_number
-  // }));
-
 
   const actor = createActor(rejectUploadMachine, {
     input: {
       queryparams: {
         fileName:fileName,
         recordCount:recordCount,
-        userId:userId
+        userId:userId,
+        acceptCount:accept_record_count,
+        rejectCount:reject_record_count,
+        rejectedRows:rejectedRows,
+        acceptedRows:acceptedRows,
+        uploadedBy:uploadedBy,
+        fileType:fileType
       },
         result: null,
         error: null,

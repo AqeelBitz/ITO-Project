@@ -13,18 +13,13 @@ export const rejectUploadMachine = setup({
         'Authorization': Authorizationtoken
       }
 
-      const { fileName, recordCount, userId } = input.queryparams
-    //   const requestBody = JSON.stringify(
-    //    input.payload
-    // );
+      const { fileName, recordCount, userId, acceptCount, rejectCount, rejectedRows, acceptedRows, uploadedBy, fileType } = input.queryparams
 
       console.log("Request Headers (FSM):", headersToSend);
-      // console.log("Request Body (FSM):", requestBody);
 
-      const response = await fetch(`http://localhost:8082/consignments/reject?fileName=${fileName}&recordCount=${recordCount}&userId=${userId}`, {
+      const response = await fetch(`http://localhost:8082/consignments/reject?fileName=${fileName}&recordCount=${recordCount}&userId=${userId}&accept_record_count=${acceptCount}&reject_record_count=${rejectCount}&rejectedRows=${rejectedRows}&acceptedRows=${acceptedRows}&uploadedBy=${uploadedBy}&fileType=${fileType}`, {
         method: 'POST',
         headers: headersToSend,
-        // body: requestBody,
       });
 
       if (!response.ok) {
@@ -61,39 +56,16 @@ export const rejectUploadMachine = setup({
         input: ({ context }) => {
           console.log("Context in loading state (before uploadRequest):", context);
           return {
-            //req.body
-            // payload:  context.payload.map(item => ({
-            //   consignment_id: item.consignment_id,
-            //   courier: item.courier,
-            //   booking_date: item.booking_date,
-            //   account_no: item.account_no,
-            //   account_title: item.account_title,
-            //   receiver_cnic: item.receiver_cnic,
-            //   shipping_bill: item.shipping_bill,
-            //   address: item.address,
-            //   city: item.city,
-            //   email: item.email,
-            //   mobile_no: item.mobile_no,
-            //   letter_type: item.letter_type,
-            //   card_no: item.card_no,
-            //   card_type: item.card_type,
-            //   card_creation_date: item.card_creation_date,
-            //   return_reason: item.return_reason,
-            //   return_date: item.return_date,
-            //   branch_cd: item.branch_cd,
-            //   receiver_name_b: item.receiver_name_b,
-            //   delivery_date: item.delivery_date,
-            //   status: item.status,
-            //   receiver_name_d: item.receiver_name_d,
-            //   relationship: item.relationship,
-            //   card_status: item.card_status,
-            //   customer_cnic_number: item.customer_cnic_number,
-            // })),
-            //queryParams
             queryparams:{
               fileName:context.queryparams.fileName,
               recordCount:context.queryparams.recordCount,
-              userId:context.queryparams.userId
+              userId:context.queryparams.userId,
+              acceptCount:context.queryparams.acceptCount,
+              rejectCount:context.queryparams.rejectCount,
+              rejectedRows:context.queryparams.rejectedRows,
+              acceptedRows:context.queryparams.acceptedRows,
+              uploadedBy:context.queryparams.uploadedBy,
+              fileType:context.queryparams.fileType
             },
             authToken:context.authToken
           }

@@ -66,21 +66,12 @@
 
 <script setup>
 import { reactive, ref } from 'vue';
-import { ElForm, ElFormItem, ElInput, ElButton } from 'element-plus'; 
+import { ElForm, ElFormItem, ElInput, ElButton } from 'element-plus'; // Removed ElMessage import
 import { useRouter } from 'vue-router';
+import MessageBox from './MessageBox.vue'; 
+import decodeJwtPayload from '../utils/jwtDecoder';
 
-const checkDigits = (event) => {
-    if (
-        event.key.length === 1 &&
-        (
-            isNaN(Number(event.key)) ||
-            branchCode.value.length >= maxLength
-        )
-    )
-    {
-        event.preventDefault();
-    }
-}
+
 
 const router = useRouter();
 const formData = reactive({
@@ -94,10 +85,36 @@ const passwordError = ref('');
 const branchCodeError = ref('');
 const showMessageBox = ref(false);
 const messageBoxContent = ref('');
+const messageBoxTitle = ref('');
+const messageBoxType = ref('info');
+const messageBoxPurpose = ref(null); 
 const loading = ref(false);
 const result = ref(null);
 const error = ref(null);
 
+const handleMessageBoxClose = () => {
+  // Hide the message box
+  showMessageBox.value = false;
+
+  if (messageBoxPurpose.value === 'validation') {
+    console.log("Validation message box closed. Checking if API call is needed.");
+    if (dataToSendToApi.value && dataToSendToApi.value.length > 0) {
+      console.log("Proceeding with API call for accepted data.");
+      validationErrors.value = []; 
+      triggerAcceptApiCall(dataToSendToApi.value); 
+    } else {
+      console.log("No accepted data after validation. API call skipped.");
+    }
+  } else if (messageBoxPurpose.value === 'apiResponse') {
+    console.log("API response message box closed.");
+    apiResponseData.value = null;
+    apiErrorMessage.value = null;
+  }
+  messageBoxContent.value = '';
+  messageBoxTitle.value = '';
+  messageBoxType.value = 'info';
+  messageBoxPurpose.value = null; 
+};
 const validateUsername = () => {
   if (!formData.username) {
     usernameError.value = 'Username is required.';
@@ -117,6 +134,9 @@ const validatePassword = () => {
 const validateBranchCode = () => {
   if (!formData.branchCd) {
     branchCodeError.value = 'Branch code is required.';
+  }
+  else if(/[a-zA-Z]/.test(formData.branchCd)){
+    branchCodeError.value = 'Alphabets not allowed!';
   } else {
     branchCodeError.value = '';
   }
@@ -133,37 +153,75 @@ const callApi = async () => {
     });
 
     if (!response.ok) {
+
       console.log(`HTTP error! status: ${response.status}`);
       const errorData = await response.json();
-      messageBoxContent.value = errorData.error.message;
-      // console.log("errorData: ",errorData.error.message)
-      const a = errorData;
-      showMessageBox.value = true;
+
+      messageBoxContent.value = errorData.error.message || 'An error occurred during login.';
+      messageBoxTitle.value = 'Login Error'; 
+      messageBoxType.value = 'error'; 
+
+      showMessageBox.value = true; 
+
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    result.value = data;
-    // const { userId, roleId } =data;
-    // console.log("userId: ", userId,".. ","roleId: ",roleId)
+    result.value = data; 
 
-    console.log('API Response:', data);
-    // send({ type: 'LOGIN_SUCCESS', userId, roleId });
+    const token = data.token; 
 
-    localStorage.setItem('authResponse', JSON.stringify(data));
+    if (token) {
+        const payload = decodeJwtPayload(token);
 
-    messageBoxContent.value = `Sign-on is Successful <br> Last Sign-on date is ${new Date().toLocaleDateString()}`;
-    showMessageBox.value = true;
-    setTimeout(() => {
-      router.push('/main');
-    }, 1500);
+        if (payload && payload.exp) {
+            const expirationTimestampMs = payload.exp * 1000;
+
+            localStorage.setItem('authToken', token);
+            localStorage.setItem('tokenExpiration', expirationTimestampMs);
+            localStorage.setItem('authResponse', JSON.stringify(data));
+            console.log('Login successful. Token stored.');
+            console.log('Token expires at:', new Date(expirationTimestampMs).toISOString());
+
+            messageBoxContent.value = `Sign-on is Successful <br> Last Sign-on date is ${new Date().toLocaleDateString()}`;
+            messageBoxTitle.value = 'Login Success'; 
+            messageBoxType.value = 'success'; 
+
+            showMessageBox.value = true; 
+
+            setTimeout(() => {
+              router.push('/main');
+            }, 1500);
+
+        } else {
+            console.error('Login successful, but token or exp claim is missing in the response.');
+            messageBoxContent.value = 'Login successful, but token details are incomplete.';
+            messageBoxTitle.value = 'Login Warning';
+            messageBoxType.value = 'warning';
+            showMessageBox.value = true;
+        }
+    } else {
+        console.error('Login successful, but token is missing in the response.');
+        messageBoxContent.value = 'Login successful, but no token was received.';
+        messageBoxTitle.value = 'Login Warning';
+        messageBoxType.value = 'warning';
+        showMessageBox.value = true;
+    }
+
+
   } catch (err) {
-    // console.error('API Error:', error);
-    error.value = err.error || 'Login Failed';
-    // send({ type: 'LOGIN_FAILURE' });
-    showMessageBox.value = true;
+    console.error('API Error:', err);
+
+    if (!messageBoxContent.value) {
+        messageBoxContent.value = 'Login Failed: Could not connect to the server or an unknown error occurred.';
+        messageBoxTitle.value = 'Connection Error';
+        messageBoxType.value = 'error';
+        showMessageBox.value = true; 
+    }
+
+    error.value = err.message || 'Login Failed'; 
   } finally {
-    loading.value = false;
+    loading.value = false; 
   }
 };
 
@@ -177,14 +235,13 @@ const handleSubmit = () => {
   validateBranchCode();
 
   if (!usernameError.value && !passwordError.value && !branchCodeError.value) {
-    // send({type: 'SUBMI'}); // move FSM to loggingIn state
     callApi();
   } else {
     console.log("Form has errors. Please correct them.");
-    messageBoxContent.value = 'Please fill in all required fields correctly.';
-    showMessageBox.value = true;
-  }
+    loading.value = false;  }
 };
+
+
 
 const resetForm = () => {
   formData.username = '';

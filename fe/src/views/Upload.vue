@@ -410,7 +410,7 @@ const handleFileChange = (uploadFile) => {
           total_record = 0;
           console.log("CSV file is empty or contains no data rows.");
           errorMessage.value = "CSV file is empty or contains no data rows.";
-          fileName.value = ''; // Clear file name as it's empty
+          fileName.value = ''; 
         }
       },
       error: (error) => {
@@ -420,7 +420,7 @@ const handleFileChange = (uploadFile) => {
         tableData.value = [];
         columns.value = [];
         total_record = 0;
-        fileName.value = ''; // Clear file name on parsing error
+        fileName.value = ''; 
       },
     });
   };
@@ -432,7 +432,7 @@ const handleFileChange = (uploadFile) => {
     tableData.value = [];
     columns.value = [];
     total_record = 0;
-    fileName.value = ''; // Clear file name on read error
+    fileName.value = ''; 
   };
 
   reader.readAsText(uploadFile.raw);
@@ -551,10 +551,10 @@ const triggerAcceptApiCall = async (dataArray) => {
 
   const rejectedRowsParam = rejectedRows.value.length > 0
     ? JSON.stringify(rejectedRows.value.map(index => index))
-    : "";
+    : "0";
   const acceptedRowsParam = acceptedRows.value.length > 0
     ? JSON.stringify(acceptedRows.value.map(index => index))
-    : "";
+    : "0";
 
   const fileType = file_id === 1 ? "Shipment letter" : file_id === 2 ? "Delivered letter" : file_id === 3 ? "Returned letter" : "Invalid file type!";
 
@@ -631,15 +631,15 @@ const resetAfterProcess = () => {
 
 const rejectAllData = async () => {
   errorMessage.value = null;
+  // Clear previous state related to validation/acceptance
   rejectedRows.value = [];
   acceptedRows.value = [];
   showMessageBox.value = false;
   messageBoxPurpose.value = null;
   apiResponseData.value = null;
   apiErrorMessage.value = null;
-  dataToSendToApi.value = [];
-  validationErrors.value = [];
-
+  dataToSendToApi.value = []; // Clear any data potentially prepared for acceptance
+  validationErrors.value = []; // Clear any validation errors
 
   if (mappedObjects.value.length === 0 || !fileName.value) {
     messageBoxTitle.value = "Info";
@@ -658,28 +658,68 @@ const rejectAllData = async () => {
     messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
     isLoading.value = false;
-    resetAfterProcess();
+    resetAfterProcess(); // Also reset if the file type is invalid
     return;
   }
 
+  isLoading.value = true; // Start loading indicator
 
-  const rejectUrl = `${apiUrl}reject?fileName=${encodeURIComponent(fileName.value)}&userId=${roleId}&recordCount=${total_record}`;
+  // --- MODIFICATION START ---
+  // When rejecting all, explicitly mark all rows as rejected
+  acceptedRows.value = []; // Set accepted rows to empty
+  rejectedRows.value = []; // Clear rejected rows first
+  for (let i = 0; i < total_record; i++) {
+      // Assuming 1-based indexing for rejectedRows parameter based on your accept logic
+      rejectedRows.value.push(i + 1);
+  }
+
+  const acceptCountToSend = 0; // 0 accepted when rejecting all
+  const rejectCountToSend = total_record; // All rows rejected
+
+  const rejectedRowsParam = rejectedRows.value.length > 0
+    ? JSON.stringify(rejectedRows.value.map(index => index))
+    : "0";
+  const acceptedRowsParam = acceptedRows.value.length > 0
+    ? JSON.stringify(acceptedRows.value.map(index => index))
+    : "0";
+
+
+  const fileType = file_id === 1 ? "Shipment letter" : file_id === 2 ? "Delivered letter" : file_id === 3 ? "Returned letter" : "Invalid file type!";
+
+  const params = new URLSearchParams({
+    fileName: fileName.value,
+    userId: roleId,
+    recordCount: total_record,
+    accept_record_count: acceptCountToSend,
+    reject_record_count: rejectCountToSend,
+    uploadedBy: uploadedBy,
+    fileType: fileType
+  });
+
+  if (rejectedRowsParam) params.append('rejectedRows', rejectedRowsParam);
+  if (acceptedRowsParam) params.append('acceptedRows', acceptedRowsParam);
+  // No need to append acceptedRowsParam as it will be empty
+
+  const rejectUrl = `${apiUrl}reject?${params.toString()}`;
   console.log("Reject URL:", rejectUrl);
 
   try {
-    const data = await makeApiRequest(rejectUrl, "POST", headers);
+    const data = await makeApiRequest(rejectUrl, "POST", headers); // POST with no body is fine for this endpoint
 
     apiResponseData.value = data;
     apiErrorMessage.value = null;
 
     messageBoxTitle.value = "Rejection Result";
     messageBoxType.value = "success";
-    messageBoxContent.value = data.message || 'Rejection operation successful.';
+    // Display feedback based on the rejection action
+    const apiMessage = data.message || `Successfully rejected ${total_record} records.`;
+    messageBoxContent.value = `${apiMessage}<br>Total rejected: ${total_record}<br>Total accepted: 0`;
 
 
     messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
 
+    // Reset state after successful process
     resetAfterProcess();
 
 
@@ -693,6 +733,8 @@ const rejectAllData = async () => {
 
     messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
+  } finally {
+      isLoading.value = false; // Ensure loading is turned off
   }
 };
 
