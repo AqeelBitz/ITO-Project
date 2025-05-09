@@ -1,69 +1,140 @@
 <template>
-  <div>
+  <div class="viewer-container">
     <div>
-      <header data-v-9562428a="" class="balh-headerr">
-        <div data-v-9562428a="" class="header-contentt">
-          <div>
-            <img data-v-9562428a="" src="/src/assets/download.png" alt="Bank Al Habib Logo" class="bahl-logoo">
+      <div>
+        <header data-v-9562428a="" class="balh-headerr">
+          <div data-v-9562428a="" class="header-contentt">
+            <div>
+              <img data-v-9562428a="" src="/src/assets/download.png" alt="Bank Al Habib Logo" class="bahl-logoo">
+            </div>
           </div>
-        </div>
-        <div>
+          <div>
             <h1 data-v-9562428a="" class="balh-titlee">CONSIGNMENT TRACKING SYSTEM</h1>
           </div>
-      </header>
-    </div>
-    <div class="main-cotainer">
-      <div class="heading">
-        <h1>Consignment Details</h1>
+        </header>
       </div>
-      <div class="container">
-        <div class="main-div">
-          <div class="input-container">
-            <el-select v-model="select" class="select-field" placeholder="Select">
-              <el-option label="Consignment Number" value="consignment_id" />
-              <el-option label="Account Number" value="account_no" />
-              <el-option label="Reciver's CNIC Number" value="receiver_cnic" />
-              <el-option label="Address" value="address" />
-              <el-option label="City" value="city" />
-            </el-select>
-            <el-input v-model="input" placeholder="Please input" class="input-field"></el-input>
-            <el-button class="custom-button" @click="searchButton">Search</el-button>
+      <div class="main-cotainer">
+        <div class="heading">
+          <h1>Consignment Details</h1>
+        </div>
+        <div class="container">
+          <div class="main-div">
+            <div class="input-container">
+              <el-select v-model="select" class="select-field" placeholder="Select">
+                <el-option label="Consignment Number" value="consignment_id" />
+                <el-option label="Account Number" value="account_no" />
+                <el-option label="Customer's CNIC Number" value="customer_cnic_number" />
+                <el-option label="Address" value="address" />
+                <el-option label="City" value="city" />
+              </el-select>
+              <el-input v-model="input" placeholder="Please input" class="input-field"></el-input>
+              <el-button class="custom-button" @click="searchButton">Search</el-button>
+              <el-button class="custom-button" @click="openReportModal">View History</el-button>
+            </div>
+            <div v-if="errorMessage" class="error-message">
+              {{ errorMessage }}
+            </div>
           </div>
-          <div v-if="errorMessage" class="error-message">
-            {{ errorMessage }}
+          <div class="table-container p-datatable" v-if="tableData.length">
+            <div class="table-responsive my-custom-table">
+              <table class="data-table p-datatable-table">
+                <thead>
+                  <tr>
+                    <th>Sno</th>
+                    <th>Consignment Number</th>
+                    <th>Courier</th>
+                    <th>Booking Date</th>
+                    <th>Account Number</th>
+                    <th>Account Title</th>
+                    <th>Shipping Bill</th>
+                    <th>Address</th>
+                    <th>City</th>
+                    <th>Email</th>
+                    <th>Mobile Number</th>
+                    <th>Letter Type</th>
+                    <th>Card Number</th>
+                    <th>Card Type</th>
+                    <th>Card Creation Date</th>
+                    <th>Return Reason</th>
+                    <th>Return Date</th>
+                    <th>Branch Code</th>
+                    <th>Received By (At Branch)</th>
+                    <th>Delivery Date</th>
+                    <th>Status</th>
+                    <th>Delivered To</th>
+                    <th>Relationship</th>
+                    <th>CNIC Number of Receiver</th>
+                    <th>Card Status</th>
+                    <th>Customer CNIC Number</th>
+                  </tr>
+                </thead>
+                <tbody class="p-datatable p-datatable-tbody">
+                  <tr v-for="(item, index) in tableData" :key="item.consignment_id">
+                    <td>{{ index + 1 }}</td>
+                    <td>{{ item.consignment_id }}</td>
+                    <td>{{ item.courier }}</td>
+                    <td>{{ item.booking_date }}</td>
+                    <td>{{ item.account_no }}</td>
+                    <td>{{ item.account_title }}</td>
+                    <td>{{ item.shipping_bill }}</td>
+                    <td>{{ item.address }}</td>
+                    <td>{{ item.city }}</td>
+                    <td>{{ item.email }}</td>
+                    <td>{{ item.mobile_no }}</td>
+                    <td>{{ item.letter_type }}</td>
+                    <td>{{ item.card_no }}</td>
+                    <td>{{ item.card_type }}</td>
+                    <td>{{ item.card_creation_date }}</td>
+                    <td>{{ item.return_reason }}</td>
+                    <td>{{ item.return_date }}</td>
+                    <td>{{ item.branch_cd }}</td>
+                    <td>{{ item.receiver_name_b }}</td>
+                    <td>{{ item.delivery_date }}</td>
+                    <td>{{ item.status }}</td>
+                    <td>{{ item.receiver_name_d }}</td>
+                    <td>{{ item.relationship }}</td>
+                    <td>{{ item.receiver_cnic }}</td>
+                    <td>{{ item.card_status }}</td>
+                    <td>{{ item.customer_cnic_number }}</td>
+                  </tr>
+                  <tr v-if="tableData.length === 0">
+                    <td :colspan="26" style="text-align: center;">No Data Available</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-        <div class="table-responsive" v-if="tableData.length">
-          <el-table ref="multipleTableRef" row-key="consignment_id" :data="tableData" scrollbar-always-on
-            empty-text="No Data Available" :border="true" stripe height="auto" style="width: 100%;">
-            <el-table-column type="index" />
-            <el-table-column prop="consignment_id" label="Consignment Number" min-width="120" />
-            <el-table-column prop="courier" label="Courier" min-width="120" />
-            <el-table-column prop="booking_date" label="Booking Date" min-width="120" />
-            <el-table-column prop="account_no" label="Account Number" min-width="120" />
-            <el-table-column prop="account_title" label="Account Title" min-width="150" />
-            <el-table-column prop="shipping_bill" label="Shipping Bill" min-width="120" />
-            <el-table-column prop="address" label="Address" min-width="200" />
-            <el-table-column prop="city" label="City" min-width="120" />
-            <el-table-column prop="email" label="Email" min-width="180" />
-            <el-table-column prop="mobile_no" label="Mobile Number" min-width="120" />
-            <el-table-column prop="letter_type" label="Letter Type" min-width="120" />
-            <el-table-column prop="card_no" label="Card Number" min-width="150" />
-            <el-table-column prop="card_type" label="Card Type" min-width="120" />
-            <el-table-column prop="card_creation_date" label="Card Creation Date" min-width="150" />
-            <el-table-column prop="return_reason" label="Return Reason" min-width="150" />
-            <el-table-column prop="return_date" label="Return Date" min-width="120" />
-            <el-table-column prop="branch_cd" label="Branch Code" min-width="120" />
-            <el-table-column prop="receiver_name_b" label="Received By (At Branch)" min-width="180" />
-            <el-table-column prop="delivery_date" label="Delivery Date" min-width="120" />
-            <el-table-column prop="status" label="Status" min-width="120" />
-            <el-table-column prop="receiver_name_d" label="Delivered To" min-width="180" />
-            <el-table-column prop="relationship" label="Relationship" min-width="120" />
-            <el-table-column prop="receiver_cnic" label="CNIC Number of Receiver" min-width="150" />
-            <el-table-column prop="card_status" label="Card Status" min-width="120" />
-            <el-table-column prop="customer_cnic_number" label="Customer CNIC Number" min-width="120" />
-          </el-table>
+
+      </div>
+
+      <el-dialog v-model="reportModalVisible" title="Generate File Upload History Report" width="30%" center
+        :close-on-click-modal="false" :close-on-press-escape="false">
+        <div class="modal-content">
+          <p>Please select the date range for the report.</p>
+          <el-date-picker v-model="fromDatePicker" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
+            placeholder="From Date" style="margin-right: 10px;" />
+          <el-date-picker v-model="toDatePicker" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
+            placeholder="To Date" />
+          <div v-if="reportError" class="error-message">
+            {{ reportError }}
+          </div>
         </div>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="reportModalVisible = false">Cancel</el-button>
+            <el-button type="primary" @click="viewReport" :loading="isGeneratingReport">
+              {{ isGeneratingReport ? 'Generating...' : 'Generate Report' }}
+            </el-button>
+          </span>
+        </template>
+      </el-dialog>
+    </div>
+    <div class="back-container">
+      <div class="back-button-container">
+        <button @click="goBack" class="balh-btn back-btn">
+          Back
+        </button>
       </div>
     </div>
   </div>
@@ -73,6 +144,7 @@
 import { ref } from 'vue';
 import type { TableInstance } from 'element-plus';
 import { useRouter } from 'vue-router';
+import { ElMessage } from 'element-plus'; // Import ElMessage for notifications
 
 const router = useRouter();
 
@@ -80,7 +152,116 @@ const input = ref('');
 const select = ref('');
 const errorMessage = ref<string | null>(null);
 const tableData = ref<TableRow[]>([]);
+// Initialize date pickers for the modal
+const fromDatePicker = ref<string | null>(null); // Use null for initial state
+const toDatePicker = ref<string | null>(null); // Use null for initial state
 
+// Modal state
+const reportModalVisible = ref(false);
+const isGeneratingReport = ref(false);
+const reportError = ref<string | null>(null);
+
+
+// Function to open the report modal
+const openReportModal = () => {
+  reportModalVisible.value = true;
+  // Optionally reset dates when opening the modal
+  // fromDatePicker.value = null;
+  // toDatePicker.value = null;
+  reportError.value = null; // Clear previous errors
+};
+const goBack = () => {
+  router.push('/main');
+}
+// This function is now called from within the modal
+const viewReport = async () => {
+  reportError.value = null; // Clear previous errors
+  if (!fromDatePicker.value || !toDatePicker.value) {
+    reportError.value = 'Please select both From and To dates.';
+    return;
+  }
+
+  isGeneratingReport.value = true; // Start loading state
+
+  try {
+    const authToken = JSON.parse(localStorage.getItem("authResponse")).token;
+    const username = JSON.parse(localStorage.getItem("authResponse")).userName;
+    const design = 'cts_report.rptdesign';
+    const format = 'pdf';
+    const fromDate = fromDatePicker.value;
+    const toDate = toDatePicker.value;
+    console.log("username passed for report:", username);
+    const url = `http://localhost:8081/api/data-access/consignment-details/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/octet-stream',
+        'Authorization': `Bearer ${authToken}`,
+      }
+    });
+
+    if (!response.ok) {
+      const contentType = response.headers.get('Content-Type');
+      let errorBody: any = null;
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          errorBody = await response.json();
+        } else {
+          errorBody = await response.text();
+        }
+      } catch (e) {
+        console.error("Error parsing response body", e);
+      }
+      // Check for specific empty data response structure if applicable
+      if (response.status === 400 && errorBody && errorBody.message === "No data found for the given date range.") {
+        reportError.value = "No data found for the selected date range.";
+      } else {
+        throw {
+          status: response.status,
+          statusText: response.statusText,
+          message: `HTTP error! Status: ${response.status}`,
+          body: errorBody // this works because you're creating the object here
+        };
+      }
+      isGeneratingReport.value = false; // End loading state
+      return; // Exit the function if there was an error
+    }
+
+    const reportBlob = await response.blob();
+
+    if (reportBlob.size === 0) {
+      reportError.value = "The generated report is empty. Please check the date range.";
+      isGeneratingReport.value = false; // End loading state
+      return; // Exit if the blob is empty
+    }
+
+
+    const blob = new Blob([reportBlob], { type: 'application/pdf' });
+    const fileURL = URL.createObjectURL(blob);
+
+    window.open(fileURL, '_blank');
+
+    reportModalVisible.value = false;
+
+  } catch (error: any) {
+    console.error("Error fetching report:", error);
+    isGeneratingReport.value = false; // End loading state
+    if (error && error.status === 401) {
+      reportError.value = "Unauthorized: Your session may have expired or you lack permission. Please log in again.";
+    } else if (error && error.status) {
+      reportError.value = `Failed to generate the report. Server responded with status ${error.status}: ${error.statusText}.`;
+    } else if (error instanceof TypeError) {
+      reportError.value = `Network Error: Could not reach the report server. Please check your connection and the server address. (${error.message})`;
+    }
+    else {
+      reportError.value = "Failed to generate the report due to an unexpected error.";
+    }
+    ElMessage.error(reportError.value); // Show Element Plus error message
+  } finally {
+    isGeneratingReport.value = false; // Ensure loading state is turned off
+  }
+}
 const searchButton = async () => {
   errorMessage.value = null;
   if (!select.value || !input.value) {
@@ -147,7 +328,218 @@ interface TableRow {
 
 const multipleTableRef = ref<TableInstance | null>(null);
 </script>
+
 <style scoped>
+.back-container{
+  padding-left: 5vw;
+  display: flex;
+  justify-content: flex-end;
+}
+.balh-btn.back-btn {
+  background-color: #d1d6da;
+  color: var(--balh-white);
+  max-width: 150px;
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
+}
+
+.balh-btn.back-btn:hover:not(.disabled) {
+  background-color: #afb9c0;
+  /* Darker grey on hover */
+  transform: translateY(-3px);
+  /* Subtle lift for back button */
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+.balh-btn {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  /* Add transform to transition */
+  width: 100%;
+  max-width: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  /* Initial subtle shadow */
+}
+
+.balh-btn:hover:not(.disabled) {
+  transform: translateY(-5px);
+  /* Lift effect */
+  box-shadow: var(--balh-hover-shadow);
+  /* Enhanced shadow on hover */
+}
+
+
+.balh-btn-icon {
+  margin-right: 8px;
+}
+
+.balh-btn.primary {
+  background-color: var(--balh-primary-green);
+  color: var(--balh-white);
+}
+
+.balh-btn.primary:hover:not(.disabled) {
+  background-color: #199666;
+  /* Slightly darker green */
+}
+
+.balh-btn.secondary {
+  background-color: var(--balh-light-grey-bg);
+  color: var(--balh-grey-text);
+  border: 1px solid var(--balh-border-grey);
+}
+
+.balh-btn.secondary:hover:not(.disabled) {
+  background-color: #e0e0e0;
+}
+
+.balh-btn.disabled {
+  background-color: var(--balh-disabled-grey);
+  color: var(--balh-disabled-text);
+  cursor: not-allowed;
+  box-shadow: none;
+  border: 1px solid var(--balh-disabled-grey);
+  transform: none;
+  /* No lift effect when disabled */
+}
+
+.balh-btn.disabled:hover {
+  transform: none;
+  /* Ensure no transform on hover when disabled */
+  box-shadow: none;
+  /* Ensure no shadow change on hover when disabled */
+}
+
+.back-button-container {
+  margin-top: 2rem;
+}
+.viewer-container{
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 8px;
+  /* box-shadow: 0 4px 15px rgb(0 0 0 / 28%); */
+  /* padding-left: 50px; */
+}
+.p-datatable .p-datatable-tbody>tr>td {
+  border: 1px solid #a9a9a9 !important;
+  border-width: 0 0 1px 1px !important;
+}
+
+.table-container {
+  padding: 8px;
+  background-color: rgb(162, 200, 168);
+  border: 1px solid #ebeef5;
+  border-radius: 3px;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  max-height: 420px;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    border-radius: 10px;
+    background: #f1f1f1;
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background: #888;
+    /* Muted gray/green, adjust color to match screenshot precisely */
+    border-radius: 10px;
+    /* Optional: rounded corners for the thumb */
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #555;
+    /* Darker color on hover */
+  }
+
+  /* Hide the scrollbar buttons (arrows) for Webkit browsers */
+  &::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  scrollbar-width: thin;
+  scrollbar-color: #006363 #f1f1f1;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #1a1b1b;
+}
+
+.data-table thead {
+  position: sticky;
+  top: 0;
+  background-color: #f5f7fa;
+  z-index: 1;
+}
+
+.data-table th,
+.data-table td {
+  padding: 8px 7px;
+  border: 1px solid #ebeef5;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table th {
+  background-color: rgb(162, 200, 168);
+  font-weight: bold;
+}
+
+.data-table tbody tr:nth-child(odd) {
+  background-color: #fff;
+}
+
+.data-table tbody tr:nth-child(even) {
+  background-color: #fcfcfc;
+  /* Slightly different background for even rows (stripe effect) */
+}
+
+.data-table td[colspan][style*="text-align: center;"] {
+  font-style: italic;
+  color: #909399;
+}
+
+.modal-content {
+  padding: 20px;
+  text-align: center;
+}
+
+.modal-content p {
+  margin-bottom: 20px;
+}
+
+.modal-content .el-date-editor {
+  width: auto;
+}
+
+.error-message {
+  color: red;
+  margin-top: 10px;
+  font-size: 0.9em;
+}
+
 .balh-titlee {
   text-align: center;
   margin: 0;
@@ -157,16 +549,16 @@ const multipleTableRef = ref<TableInstance | null>(null);
   height: 60px;
 }
 
-.balh-headerr { 
+.balh-headerr {
   display: flex;
   flex-direction: row;
-  align-items: center; 
-  width: 100%; 
+  align-items: center;
+  width: 100%;
   padding: 0 20px;
-  box-sizing: border-box; 
+  box-sizing: border-box;
 }
 
-.balh-headerr > div:nth-child(2) {
+.balh-headerr>div:nth-child(2) {
   margin-left: auto;
   margin-right: auto;
 }
@@ -174,7 +566,7 @@ const multipleTableRef = ref<TableInstance | null>(null);
 .main-cotainer {
   background-color: var(--balh-white);
   border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 15px rgb(8 8 8 / 36%);
   padding: 15px;
   font-family: 'Arial', sans-serif;
   box-sizing: border-box;
@@ -294,84 +686,6 @@ const multipleTableRef = ref<TableInstance | null>(null);
   font-size: 0.9em;
 }
 
-.table-responsive {
-  width: 100%;
-  overflow-x: auto;
-  margin-top: 0;
-  box-sizing: border-box;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.el-table {
-  width: 100%;
-  border: none;
-  border-radius: 0;
-}
-
-.el-table td.el-table__cell,
-.el-table th.el-table__cell {
-  border-bottom: 1px solid #f4f4f4;
-  border-right: none;
-  /* Remove vertical borders */
-  padding: 10px;
-  /* Base padding */
-  box-sizing: border-box;
-  white-space: normal;
-  /* Allow text wrapping */
-  word-break: break-word;
-  vertical-align: top;
-}
-
-.el-table__header-wrapper th.el-table__cell {
-  background-color: #007a3b;
-  /* Darker green for header background */
-  color: #ffffff;
-  font-weight: bold;
-  border-bottom: 2px solid #00a651;
-  /* Slightly lighter green bottom border */
-  text-align: center;
-  /* Center header text */
-  padding: 12px 10px;
-  /* Padding for headers */
-}
-
-/* Remove the default inner border line Element Plus adds */
-.el-table__inner-wrapper::before {
-  height: 0;
-}
-
-/* Add a border to the table itself (on the container) */
-.table-responsive .el-table--border {
-  border: 1px solid #cccccc;
-  border-radius: 4px;
-}
-
-
-/* Style for striped table rows */
-.el-table__body tr.el-table__row--striped {
-  background-color: #f9f9f9;
-}
-
-/* Style for table row hover state */
-.el-table__body tr.el-table__row:hover>td {
-  background-color: #e9f6ee !important;
-  /* Light green hover effect */
-}
-
-/* Empty Table State */
-/* Element Plus handles the empty-text, we just need container styling */
-.el-table__empty-block {
-  min-height: 150px;
-  /* Ensure the empty state block has some height */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #909399;
-  /* Element Plus default empty text color */
-}
-
-
 /* --- Media Queries for Responsiveness --- */
 @media (min-width: 768px) {
   .main-cotainer {
@@ -424,93 +738,6 @@ const multipleTableRef = ref<TableInstance | null>(null);
     font-size: 1em;
   }
 
-  .table-responsive {
-    margin-top: 0;
-    /* Gap handles spacing */
-  }
 
-  .el-table td.el-table__cell,
-  .el-table th.el-table__cell {
-    padding: 12px 15px;
-    /* More padding in table cells on larger screens */
-  }
 }
 </style>
-<!-- <style scoped>
-.main-container {
-  display: flex;
-  height: 100vh; /* Make the main container take full viewport height */
-  overflow: hidden; /* Prevent body scroll */
-}
-.container{
-  display: flex
-;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-.form-section {
-  width: 350px; /* Adjust as needed */
-  background-color: #f4f4f4;
-  padding: 20px;
-  box-sizing: border-box;
-  position: sticky; /* Keep the form fixed on scroll within main-container */
-  top: 0;
-  left: 0;
-  height: 100vh; /* Make the form section full height */
-  overflow-y: auto; /* Allow scrolling for long forms */
-}
-
-.form-inner {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.heading {
-  display: flex;
-  justify-content: center;
-  color: white;
-}
-
-.input-container {
-  margin-bottom: 10px;
-  display: flex;
-    flex-direction: column;
-    gap: 15px;  
-    width: 100%;
-}
-
-.select-field {
-  width: 100%;
-}
-
-.input-field {
-  width: 100%;
-}
-
-.custom-button {
-  width: 100%;
-}
-
-.error-message {
-  color: #dc3545;
-  margin-top: 10px;
-  font-size: 14px;
-}
-.table-responsive {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.el-table {
-  min-width: 100%;
-}
-
-.no-data-message {
-  color: #777;
-  font-style: italic;
-  padding: 20px;
-  text-align: center;
-}
-</style> -->

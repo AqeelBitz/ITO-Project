@@ -57,8 +57,7 @@
 .el-overlay.is-message-box {
   display: flex; /* Use flexbox to center the message box */
   align-items: center; /* Center vertically */
-  justify-content: center; /* Center horizontally */
-  position: fixed; /* Use fixed positioning */
+  justify-content: center;
   top: 0;
   left: 0;
   width: 100%;
@@ -76,7 +75,6 @@
   overflow: hidden;
   border-radius: 4px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.08);
-  display: flex; /* Added flex display */
   flex-direction: column; /* Stack header, content, and buttons vertically */
 }
 

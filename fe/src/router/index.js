@@ -3,49 +3,41 @@ import Upload from '../views/Upload.vue';
 import Viewer from '../views/Viewer.vue';
 import Login from '../views/Login.vue';
 import Main from '../views/Main.vue';
+import { ElMessageBox } from 'element-plus';
 
 const routes = [
   {
     path: "/",
     name: "Login",
     component: Login,
-    // meta: {
-    //   hideNavbar: true,
-    // },
   },
   {
     path: "/main",
     name: "Main",
     component: Main,
-    // meta: {
-    //   hide: "true",
-    //   hideBaseBtn: true,
-    //   title: "Main Menu",
-    //   activeNav: "1",
-    //   hideSideNavMenu: false,
-    // },
+    meta: {
+      requiresAuth: true,
+    },
   },
   {
     path: "/upload",
     name: "Upload",
     component: Upload,
-    // meta: {
-    //   hide: "true",
-    //   hideBaseBtn: true,
-    //   title: "Main Menu",
-    //   activeNav: "1",
-    //   hideSideNavMenu: false,
-    // },
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['Updater'],
+    },
   },
   {
     path: "/viewer",
     name: "Viewer",
     component: Viewer,
-    // meta: {
-    //   hideNavbar: true,
-    // },
+    meta: {
+      requiresAuth: true,
+
+      allowedRoles: ['Updater','Viewer'],
+    },
   },
-  ///EndRoutes///
 ];
 
 const router = createRouter({
@@ -61,5 +53,128 @@ const router = createRouter({
     }
   }
 });
+let isMessageBoxOpen = false;
+router.beforeEach((to, from, next) => {
+  console.log('--- Navigation Start ---');
+  console.log('Navigating to:', to.name);
+  console.log('Requires Auth:', to.meta.requiresAuth);
+  console.log('Allowed Roles:', to.meta.allowedRoles);
+
+  if (to.name === 'Login') {
+      console.log('Navigating to Login page. Allowing.');
+      next();
+      console.log('--- Navigation End ---');
+      return; 
+  }
+
+  const authToken = localStorage.getItem('authToken');
+  const tokenExpiration = localStorage.getItem('tokenExpiration'); 
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  console.log("tokenExpiration: ", tokenExpiration); 
+
+
+  if (requiresAuth) {
+    let needsRedirectToLogin = false;
+    let redirectReason = '';
+
+    if (!authToken || !tokenExpiration) {
+      console.log('Auth token or expiration missing from storage.');
+      needsRedirectToLogin = true;
+      redirectReason = 'Authentication data is missing.';
+    } else {
+        const now = Date.now(); 
+        const expirationTimestampMs = parseInt(tokenExpiration); 
+        console.log('Current time (ms):', now);
+        console.log('Token expiration timestamp (ms):', expirationTimestampMs);
+        console.log('Is token expired (expiration < now):', expirationTimestampMs < now);
+
+        if (expirationTimestampMs < now) {
+          console.log('Auth token expired client-side.');
+          needsRedirectToLogin = true;
+          redirectReason = 'Your session has expired.';
+        }
+    }
+
+
+    let userRole = null;
+    let isLoggedIn = false; 
+
+    if (!needsRedirectToLogin) { 
+        const authResponseString = localStorage.getItem('authResponse');
+
+        if (authResponseString) {
+          try {
+            const authResponse = JSON.parse(authResponseString);
+            console.log('Parsed authResponse:', authResponse);
+            userRole = authResponse ? authResponse.roleName : null;
+            isLoggedIn = !!authResponse; 
+            console.log('Extracted userRole:', userRole);
+
+            if (isLoggedIn && to.meta.allowedRoles && !to.meta.allowedRoles.includes(userRole)) {
+                console.log(`User role "${userRole}" not allowed for this route. Redirecting to Main.`);
+                next({ name: 'Main' });
+                console.log('--- Navigation End (Redirected due to role) ---');
+                return; 
+            } else if (!isLoggedIn) {
+                 console.log('Auth token exists and is not expired, but authResponse is invalid (parsed to falsy value).');
+                 needsRedirectToLogin = true;
+                 redirectReason = 'Authentication data is invalid.'; 
+            }
+          } catch (error) {
+            console.error('Error parsing authResponse:', error);
+            needsRedirectToLogin = true;
+            redirectReason = 'Authentication data is corrupt.';
+          }
+        } else {
+           console.log('Auth token and expiration exist, but authResponse string is missing.');
+           needsRedirectToLogin = true;
+           redirectReason = 'Authentication data is missing.'; 
+        }
+    }
+
+    if (needsRedirectToLogin || !isLoggedIn) {
+        console.log(`Authentication check failed. Reason: ${redirectReason || 'Unknown authentication issue'}`); 
+
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('tokenExpiration');
+        localStorage.removeItem('authResponse');
+
+        if (!isMessageBoxOpen) {
+            isMessageBoxOpen = true; 
+            ElMessageBox.alert(`${redirectReason || 'Your session is invalid.'} Please log in again.`, 'Session Invalid', {
+              confirmButtonText: 'OK', 
+              type: 'warning', 
+              showClose: false, 
+              callback: (action) => { 
+                isMessageBoxOpen = false; 
+                next({ name: 'Login' });
+              }
+            })
+            .catch(() => {
+               isMessageBoxOpen = false;
+               next({ name: 'Login' }); 
+            });
+        } else {
+             console.log('Message box already open from a previous auth failure. Ensuring redirection to Login.');
+             next({ name: 'Login' });
+        }
+
+        console.log('--- Navigation End (Redirected to Login after auth failure) ---');
+        return; 
+    }
+
+    console.log('Authentication and Authorization checks passed. Navigation allowed.');
+    next(); 
+    console.log('--- Navigation End ---');
+
+  } else {
+    console.log('Public route, no authentication required. Navigation allowed.');
+    next();
+    console.log('--- Navigation End ---');
+  }
+});
+
+
+
 
 export default router;

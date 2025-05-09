@@ -28,8 +28,11 @@
           </button>
         </div>
         <div class="back-button-container">
-           <button @click="goBack" class="balh-btn back-btn">
+           <button @click="goBack" class="back-btn">
             Back
+          </button>
+          <button @click="handleLogout" class="back-btn">
+            Logout
           </button>
         </div>
       </section>
@@ -43,6 +46,12 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
+
+const handleLogout = () => {
+  localStorage.removeItem('authResponse');
+
+  router.push('/'); 
+};
 
 const goToUpload = () => {
   router.push('/upload');
@@ -62,7 +71,6 @@ const roleId = authResponse ? authResponse.roleId : null; // Handle potential nu
 </script>
 
 <style scoped>
-/* Color Palette inspired by Bank Al Habib */
 :root {
   --balh-primary-green: #006840; /* A strong, professional green */
   --balh-light-green: #e8f5e9; /* Very light green for backgrounds or accents */
@@ -100,6 +108,7 @@ const roleId = authResponse ? authResponse.roleId : null; // Handle potential nu
 .balh-logo {
     height: 200px;
     margin-right: 15px; /* Space between logo and title */
+    
 }
 
 .balh-title {
@@ -155,7 +164,27 @@ const roleId = authResponse ? authResponse.roleId : null; // Handle potential nu
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Initial subtle shadow */
 }
 
+.back-btn {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease; /* Add transform to transition */
+  width: 100%;
+  max-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Initial subtle shadow */
+}
+
 .balh-btn:hover:not(.disabled) {
+  transform: translateY(-5px); /* Lift effect */
+  box-shadow: var(--balh-hover-shadow); /* Enhanced shadow on hover */
+}
+.back-btn:hover:not(.disabled) {
   transform: translateY(-5px); /* Lift effect */
   box-shadow: var(--balh-hover-shadow); /* Enhanced shadow on hover */
 }
@@ -164,13 +193,23 @@ const roleId = authResponse ? authResponse.roleId : null; // Handle potential nu
 .balh-btn-icon {
     margin-right: 8px;
 }
+.back-btn-icon {
+    margin-right: 8px;
+}
 
 .balh-btn.primary {
   background-color: var(--balh-primary-green);
   color: var(--balh-white);
 }
+.back-btn.primary {
+  background-color: var(--balh-primary-green);
+  color: var(--balh-white);
+}
 
 .balh-btn.primary:hover:not(.disabled) {
+  background-color: #199666; /* Slightly darker green */
+}
+.back-btn.primary:hover:not(.disabled) {
   background-color: #199666; /* Slightly darker green */
 }
 
@@ -179,8 +218,16 @@ const roleId = authResponse ? authResponse.roleId : null; // Handle potential nu
   color: var(--balh-grey-text);
   border: 1px solid var(--balh-border-grey);
 }
+.back-btn.secondary {
+  background-color: var(--balh-light-grey-bg);
+  color: var(--balh-grey-text);
+  border: 1px solid var(--balh-border-grey);
+}
 
 .balh-btn.secondary:hover:not(.disabled) {
+  background-color: #e0e0e0;
+}
+.back-btn.secondary:hover:not(.disabled) {
   background-color: #e0e0e0;
 }
 
@@ -193,7 +240,19 @@ const roleId = authResponse ? authResponse.roleId : null; // Handle potential nu
   transform: none; /* No lift effect when disabled */
 }
 
+.back-btn.disabled {
+  background-color: var(--balh-disabled-grey);
+  color: var(--balh-disabled-text);
+  cursor: not-allowed;
+  box-shadow: none;
+  border: 1px solid var(--balh-disabled-grey);
+  transform: none; /* No lift effect when disabled */
+}
 .balh-btn.disabled:hover {
+    transform: none; /* Ensure no transform on hover when disabled */
+    box-shadow: none; /* Ensure no shadow change on hover when disabled */
+}
+.back-btn.disabled:hover {
     transform: none; /* Ensure no transform on hover when disabled */
     box-shadow: none; /* Ensure no shadow change on hover when disabled */
 }
@@ -201,17 +260,17 @@ const roleId = authResponse ? authResponse.roleId : null; // Handle potential nu
 
 .back-button-container {
     margin-top: 1rem; /* Space above the back button */
-    width: 100%;
+    width: 40%;
     display: flex;
-    justify-content: center; /* Center the back button */
+    justify-content: space-between;
 }
 
-.balh-btn.back-btn {
+.back-btn {
   background-color: #d1d6da; 
     color: var(--balh-white);
-    max-width: 150px; /* Make back button slightly narrower */
-    padding: 0.8rem 1.5rem; /* Slightly less padding */
-    font-size: 1rem; /* Slightly smaller font */
+    max-width: 120px; 
+    padding: 0.8rem 1.5rem; 
+    font-size: 1rem; 
 }
 
 .balh-btn.back-btn:hover:not(.disabled) {
@@ -219,6 +278,7 @@ const roleId = authResponse ? authResponse.roleId : null; // Handle potential nu
   transform: translateY(-3px); 
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
 }
+
 
 
 /* Footer can be removed or kept for other content if needed */

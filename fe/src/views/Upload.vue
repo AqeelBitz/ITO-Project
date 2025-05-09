@@ -31,23 +31,52 @@
       <div v-if="fileName" class="file-name">{{ fileName }}</div>
       <div v-if="errorMessage" class="error-message">{{ errorMessage }}
       </div>
-      <div class="table-and-buttons-container"
-        v-if="tableData.length > 0 && columns.length > 0 && columns[0].prop !== 'placeholder'">
-        <div class="tablecsv">
-          <el-table ref="multipleTableRef" row-key="id" @selection-change="handleSelectionChange" :data="tableData"
-            stripe height="500" style="width: 100%;" scrollbar-always-on :border="true">
-            <el-table-column type="index" label="#" width="50" fixed /> <template
-              v-if="columns.length > 0 && columns[0].prop !== 'placeholder'">
-              <el-table-column v-for="column in columns" :key="column.prop" :prop="column.prop" :label="column.label"
-                min-width="150" show-overflow-tooltip /> </template>
-          </el-table>
+      <div class="" v-if="tableData.length > 0 && columns.length > 0 && columns[0].prop !== 'placeholder'">
+        <div class="p-datatable">
+          <div class=" table-responsive my-custom-table">
+            <table class="data-table p-datatable-table">
+              <thead>
+                <tr>
+                  <th class="fixed-column">#</th>
+
+                  <template v-if="columns.length > 0 && columns[0].prop !== 'placeholder'">
+                    <th v-for="column in columns" :key="column.prop">
+                      {{ column.label }}
+                    </th>
+                  </template>
+                </tr>
+              </thead>
+              <tbody class="p-datatable p-datatable-tbody">
+                <tr v-for="(item, index) in tableData" :key="item.id">
+                  <td class="fixed-column">{{ index + 1 }}</td>
+
+                  <template v-if="columns.length > 0 && columns[0].prop !== 'placeholder'">
+                    <td v-for="column in columns" :key="column.prop">
+                      {{ item[column.prop] }} </td>
+                  </template>
+                </tr>
+
+                <tr v-if="tableData.length === 0">
+                  <td :colspan="columns.length + 1" style="text-align: center;">No Data Available</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div class="action-buttons" style="margin-top: 20px; display: flex; gap: 10px;">
-          <el-button class="accept-btn" type="primary" @click="acceptAllData()">Accept All</el-button>
-          <el-button class="reject-btn" @click="rejectAllData()">Reject</el-button>
+        <div class="buttons-container">
+          <div class="action-buttons" style="margin-top: 20px; display: flex; gap: 10px;">
+            <el-button class="accept-btn" type="primary" @click="acceptAllData()">Accept</el-button>
+            <el-button class="reject-btn" @click="rejectAllData()">Reject</el-button>
+          </div>
+          <div class="back-button-container">
+            <button @click="goBack" class="balh-btn back-btn">
+              Back
+            </button>
+          </div>
         </div>
+
       </div>
-      <div v-else-if="!fileName && !errorMessage" class="empty-state">
+      <div v-else-if="!fileName && !errorMessage" class="empty-state" @click="triggerFileUpload">
         <div class="upload-empty-container">
           <div style="font-size: 90px; padding-right: 15px;">
             <el-icon class="el-icon--upload" viewBox="0 0 24 24"><upload-filled /></el-icon>
@@ -67,11 +96,7 @@
 
       <MessageBox :visible="showMessageBox" :title="messageBoxTitle" :content="messageBoxContent" :type="messageBoxType"
         @close="handleMessageBoxClose" />
-      <div class="back-button-container">
-        <button @click="goBack" class="balh-btn back-btn">
-          Back
-        </button>
-      </div>
+
     </div>
   </div>
 </template>
@@ -79,8 +104,7 @@
 <script setup>
 import { ref } from 'vue';
 import Papa from 'papaparse';
-// Import the new MessageBox component
-import MessageBox from './MessageBox.vue'; // Adjust the path as needed
+import MessageBox from './MessageBox.vue';
 import { useRouter } from 'vue-router';
 const router = useRouter();
 
@@ -94,21 +118,18 @@ const messageBoxContent = ref('');
 const messageBoxTitle = ref('');
 const messageBoxType = ref('info');
 const isLoading = ref(false);
-
-// --- New/Modified State for Message Box Flow ---
-const messageBoxPurpose = ref(null); // null, 'validation', 'apiResponse'
-const apiResponseData = ref(null); // Store API success data temporarily
-const apiErrorMessage = ref(null); // Store API error message temporarily
-const dataToSendToApi = ref([]); // Store accepted data after validation
-const validationErrors = ref([]); // Store validation errors temporarily
-const rejectedRows = ref([]); // Local tracking for validation/summary, sent to API implicitly
-const acceptedRows = ref([]); // Local tracking for validation/summary, sent to API implicitly
+const messageBoxPurpose = ref(null);
+const apiResponseData = ref(null);
+const apiErrorMessage = ref(null);
+const dataToSendToApi = ref([]);
+const validationErrors = ref([]);
+const rejectedRows = ref([]);
+const acceptedRows = ref([]);
 
 let file_id = 0;
 let total_record;
 
 const fileName = ref('');
-// Initialize columns as empty array, placeholder handled in template
 const columns = ref([]);
 const uploadRef = ref(null);
 const mappedObjects = ref([]);
@@ -148,14 +169,11 @@ const goBack = () => {
 const triggerFileUpload = () => {
   if (uploadRef.value) {
     console.log("uploadRef.value: ", uploadRef.value);
-    // Access the native file input element
-    // The way to access the native input might depend slightly on Element Plus version
     const fileInput = uploadRef.value.$el ? uploadRef.value.$el.querySelector('input[type="file"]') : uploadRef.value.$refs.input?.$el?.querySelector('input[type="file"]'); // Adjusted access methods
     if (fileInput) {
       fileInput.click();
     } else {
       console.error("File input element not found on uploadRef.");
-      // Fallback if direct access fails, might need to adjust based on Element Plus structure
       const fallbackInput = document.querySelector('#file_input input[type="file"]');
       if (fallbackInput) {
         fallbackInput.click();
@@ -252,23 +270,17 @@ const handleSelectionChange = (val) => {
   multipleSelection.value = val;
 };
 
-// Access row data using the original header key
 const createMappedObjects = (headers, data) => {
   const mapped = [];
-  data.forEach((row, index) => { // Get index here
+  data.forEach((row, index) => {
     const obj = {};
     headers.forEach((header) => {
-      // Use the original header to find the mapped key (using lowercase and trim for map lookup)
       const mappedKey = headingMap[header.toLowerCase().trim()];
       if (mappedKey) {
-        // Access row data using the original header as the key provided by PapaParse
-        obj[mappedKey] = row[header]; // <-- Access using the original 'header' value
+        obj[mappedKey] = row[header];
       }
-      // Decide if you want to keep original unmapped columns.
-      // For validation and API, keeping only mapped is usually cleaner.
     });
-    // Add original row index for tracking purposes
-    obj._originalIndex = index; // Store 0-based index
+    obj._originalIndex = index;
     mapped.push(obj);
   });
   return mapped;
@@ -292,19 +304,16 @@ const formatValidationErrorMessage = (errors) => {
 
   sortedRowIndices.forEach(rowIndex => {
     const rowErrors = errorsByRowIndex[rowIndex];
-    // Use the original row number (index + 1)
     message += `<br>Row ${parseInt(rowIndex) + 1}:<br>`;
     rowErrors.forEach(err => {
-      // Find the original column name from headingMap or use the mapped name if not found
       const originalColumnName = Object.keys(headingMap).find(key => headingMap[key] === err.columnName);
-      const displayColumnName = originalColumnName || err.columnName; // Use original if found, else mapped
+      const displayColumnName = originalColumnName || err.columnName;
 
-      if (err.columnName === "consignment_id") { // Use the mapped key for checking
+      if (err.columnName === "consignment_id") {
         message += `- Invalid '${displayColumnName}' value: "${err.value}". Must be a number.<br>`;
-      } else if (err.columnName.includes("_date")) { // Check for date fields using mapped keys
+      } else if (err.columnName.includes("_date")) {
         message += `- Invalid '${displayColumnName}' date value: "${err.value}". Expected formats: ${acceptedFormats}.<br>`;
       } else {
-        // Generic error message for other column types if needed
         message += `- Invalid value for '${displayColumnName}': "${err.value}".<br>`;
       }
     });
@@ -314,23 +323,22 @@ const formatValidationErrorMessage = (errors) => {
 };
 
 const handleFileChange = (uploadFile) => {
-  // Reset states related to previous upload/process
   errorMessage.value = null;
-  tableData.value = []; // Reset to empty array
-  columns.value = []; // Reset to empty array
+  tableData.value = [];
+  columns.value = [];
   fileName.value = '';
   mappedObjects.value = [];
   rejectedRows.value = [];
   acceptedRows.value = [];
-  showMessageBox.value = false; // Hide previous message
-  messageBoxPurpose.value = null; // Reset message box purpose
+  showMessageBox.value = false;
+  messageBoxPurpose.value = null;
   apiResponseData.value = null;
   apiErrorMessage.value = null;
   dataToSendToApi.value = [];
   validationErrors.value = [];
 
-  file_id = 0; // Reset file type id
-  total_record = 0; // Reset total records
+  file_id = 0;
+  total_record = 0;
 
   if (!uploadFile.raw) {
     errorMessage.value = 'File is not properly loaded.';
@@ -348,7 +356,6 @@ const handleFileChange = (uploadFile) => {
       complete: (results) => {
         if (results.data && results.data.length > 0) {
           const csvHeaders = Object.keys(results.data[0]);
-          // Filter out headers that are empty strings or null
           const validCsvHeaders = csvHeaders.filter(header => header && header.trim() !== '');
 
           if (validCsvHeaders.length === 0) {
@@ -363,39 +370,36 @@ const handleFileChange = (uploadFile) => {
           }
 
           columns.value = validCsvHeaders.map((key) => ({
-            prop: key, // Use original header as prop
-            label: key, // Use original header as label
+            prop: key,
+            label: key,
           }));
-          tableData.value = results.data; // Store original parsed data for table display
-          // Pass validated headers to createMappedObjects
+          tableData.value = results.data;
           mappedObjects.value = createMappedObjects(validCsvHeaders, results.data);
           total_record = results.data.length;
           console.log("Total records in CSV:", total_record);
           console.log("Mapped Objects: ", mappedObjects.value);
 
-          // Determine file_id based on the number of *valid* columns found in the CSV
           if (validCsvHeaders.length === 16) {
-            file_id = 1; //Shipment
+            file_id = 1;
             console.log("Detected File Type: Shipment letter (16 columns)");
           }
           else if (validCsvHeaders.length === 8) {
-            file_id = 2; //Delivered
+            file_id = 2;
             console.log("Detected File Type: Delivered letter (8 columns)");
           }
           else if (validCsvHeaders.length === 7) {
-            file_id = 3; //Returned
+            file_id = 3;
             console.log("Detected File Type: Returned letter (7 columns)");
           }
           else {
-            file_id = 0; //Invalid
+            file_id = 0;
             console.log("Detected File Type: Invalid (unexpected number of columns: " + validCsvHeaders.length + ")");
             errorMessage.value = `Invalid file format: Expected 7, 8, or 16 columns, but found ${validCsvHeaders.length}. Please upload a valid template.`;
-            // Clear parsed data if file format is invalid
             tableData.value = [];
             columns.value = [];
             mappedObjects.value = [];
             total_record = 0;
-            fileName.value = ''; // Clear file name as it's invalid
+            fileName.value = '';
 
           }
 
@@ -437,18 +441,18 @@ const handleFileChange = (uploadFile) => {
 
 const apiUrl = `http://localhost:3001/fsm/consignments/`;
 
-const roleId = parseInt(JSON.parse(localStorage.getItem("authResponse")).roleId);
-const authToken = JSON.parse(localStorage.getItem("authResponse")).token;
-const uploadedBy = JSON.parse(localStorage.getItem("authResponse")).userName;
+console.log(`localStorage.getItem("authResponse"): ` + localStorage.getItem("authResponse"))
+const roleId = localStorage.getItem("authResponse") != null ? parseInt(JSON.parse(localStorage.getItem("authResponse")).roleId) : "";
+const authToken = localStorage.getItem("authResponse") != null ? JSON.parse(localStorage.getItem("authResponse")).token : "";
+const uploadedBy = localStorage.getItem("authResponse") != null ? JSON.parse(localStorage.getItem("authResponse")).userName : "";
 const headers = {
   'accept': '*/*',
   'Authorization': `Bearer ${authToken}`,
   'Content-Type': 'application/json'
 };
 
-// --- Centralized API Request Helper ---
 const makeApiRequest = async (url, method, headers, body = null) => {
-  isLoading.value = true; // Start loading
+  isLoading.value = true;
   try {
     console.log(`Making API request: ${method} ${url}`);
     const response = await fetch(url, {
@@ -458,132 +462,98 @@ const makeApiRequest = async (url, method, headers, body = null) => {
     });
 
     if (!response.ok) {
+
       let errorBody;
-      let errorMessage = `HTTP error! Status: ${response.status}`; // Default error message
+      let errorMessage = `HTTP error! Status: ${response.status}`;
       let errorDetails = null;
 
       try {
-        errorBody = await response.text(); // Read as text first
-        // Attempt JSON parsing only if Content-Type is application/json
+        errorBody = await response.text();
         if (response.headers.get("content-type")?.includes("application/json")) {
           errorDetails = JSON.parse(errorBody);
-          // **Extract message from JSON payload if available, otherwise use default**
           errorMessage = errorDetails.message || errorDetails.error?.message || errorBody || `Error: ${response.status}`;
           console.log("API Error Response (JSON):", errorDetails);
         } else {
-          // **Use raw text if not JSON, otherwise use default**
           errorMessage = errorBody || `Error: ${response.status}`;
           console.log("API Error Response (Text):", errorBody);
         }
       } catch (e) {
         console.error("Error reading or parsing API error body:", e);
-        // Fallback to a generic message if body reading/parsing fails
         errorMessage = `HTTP error! Status: ${response.status}. Could not read error details.`;
       }
 
-      // Structure the error to be caught by the caller
-      const apiError = new Error(errorMessage); // Use the extracted/default message
+      const apiError = new Error(errorMessage);
       apiError.status = response.status;
       apiError.statusText = response.statusText;
-      apiError.details = errorDetails || errorBody; // Include parsed JSON or raw body for debugging
+      apiError.details = errorDetails || errorBody;
 
       console.error("API Request failed:", apiError);
-      throw apiError; // Re-throw the structured error
+      throw apiError;
 
     }
 
-    // If response is OK, parse and return JSON
-    // Check if response has content to parse (e.g., 204 No Content wouldn't)
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
       const data = await response.json();
       console.log("API Response (Success - JSON):", data);
-      // **Return the parsed data (which should contain the success message and counts)**
       return data;
     } else {
       console.log("API Response (Success - No JSON or other type):", response.status, response.statusText);
-      // **Return a default success object if no JSON body is expected**
-      // Assuming API *should* return counts on success for 'accept'. If not,
-      // this default might not have the counts.
       return { message: `Operation successful (Status: ${response.status})`, accepted_count: 0, rejected_count: 0 };
     }
 
 
   } catch (error) {
     console.error("API Request encountered an exception:", error);
-    // Handle network errors or errors thrown during fetch/response processing
     if (error.status !== undefined) {
-      // It's an API error we already structured and threw
-      throw error; // Re-throw the structured error (with message derived from backend)
+      throw error;
     } else {
-      // It's a network error or other unexpected fetch issue
       const networkError = new Error(`Network or unexpected error during API call: ${error.message || 'Unknown network error'}`);
-      networkError.originalError = error; // Keep original error for debugging
+      networkError.originalError = error;
       console.error("Network Error:", networkError);
-      throw networkError; // Throw a structured network error
+      throw networkError;
     }
   } finally {
-    isLoading.value = false; // End loading in all cases
+    isLoading.value = false;
   }
 };
-// --- End Centralized API Request Helper ---
-
-// --- Message Box Handling Logic ---
 const handleMessageBoxClose = () => {
-  // Hide the message box
   showMessageBox.value = false;
 
-  // Check the purpose of the message box that was just closed
   if (messageBoxPurpose.value === 'validation') {
     console.log("Validation message box closed. Checking if API call is needed.");
-    // If it was a validation message and there is data to send, trigger API call
     if (dataToSendToApi.value && dataToSendToApi.value.length > 0) {
       console.log("Proceeding with API call for accepted data.");
-      // IMPORTANT: Clear validation-specific temp state *before* API call logic
-      validationErrors.value = []; // Clear validation error list
-      // rejectedRows.value and acceptedRows.value are needed for the API URL params,
-      // so they are NOT cleared here. They are cleared in resetAfterProcess.
+      validationErrors.value = [];
 
-      // Trigger the API call and handle its message box display
-      triggerAcceptApiCall(dataToSendToApi.value); // New function for API call flow
+      triggerAcceptApiCall(dataToSendToApi.value);
     } else {
       console.log("No accepted data after validation. API call skipped.");
-      // If no data to send, the process is finished after validation message
-      resetAfterProcess(); // Clear all states
+      resetAfterProcess();
     }
   } else if (messageBoxPurpose.value === 'apiResponse') {
     console.log("API response message box closed.");
-    // If it was an API response message, the process is complete
-    // States were already cleared on successful API call inside AddConsignmentDetails
-    // If API failed, states remain, user can inspect table/errors.
-    // We just clear the temp API response data storage here.
     apiResponseData.value = null;
     apiErrorMessage.value = null;
-    // If you wanted to *always* clear table/file data after closing API box, do it here.
-    // Keeping current logic: clear only on API success (handled by resetAfterProcess).
   }
 
-  // Always clear the message box content and purpose after handling
   messageBoxContent.value = '';
   messageBoxTitle.value = '';
   messageBoxType.value = 'info';
-  messageBoxPurpose.value = null; // Reset purpose
+  messageBoxPurpose.value = null;
 };
 
-// Function to trigger the API call specifically after validation
 const triggerAcceptApiCall = async (dataArray) => {
   console.log("Starting API call for accepted data...");
-  // isLoading.value is handled by makeApiRequest
 
-  // Use the counts captured during frontend validation for API URL params
   const acceptCountValidated = acceptedRows.value.length;
   const rejectCountValidated = rejectedRows.value.length;
 
   const rejectedRowsParam = rejectedRows.value.length > 0
-    ? JSON.stringify(rejectedRows.value.map(index => index)) // Send array of row numbers (1-based)
+    ? JSON.stringify(rejectedRows.value.map(index => index))
     : "";
   const acceptedRowsParam = acceptedRows.value.length > 0
-    ? JSON.stringify(acceptedRows.value.map(index => index)) // Send array of row numbers (1-based)
+    ? JSON.stringify(acceptedRows.value.map(index => index))
     : "";
 
   const fileType = file_id === 1 ? "Shipment letter" : file_id === 2 ? "Delivered letter" : file_id === 3 ? "Returned letter" : "Invalid file type!";
@@ -592,8 +562,8 @@ const triggerAcceptApiCall = async (dataArray) => {
     fileName: fileName.value,
     userId: roleId,
     recordCount: total_record,
-    accept_record_count: acceptCountValidated, // Sent frontend count
-    reject_record_count: rejectCountValidated, // Sent frontend count
+    accept_record_count: acceptCountValidated,
+    reject_record_count: rejectCountValidated,
     uploadedBy: uploadedBy,
     fileType: fileType
   });
@@ -608,11 +578,10 @@ const triggerAcceptApiCall = async (dataArray) => {
   try {
     const data = await makeApiRequest(acceptUrl, "POST", headers, dataArray);
 
-    // API Success - Prepare API response message box
-    apiResponseData.value = data; // Store data
-    apiErrorMessage.value = null; // Clear any previous error
+    apiResponseData.value = data;
+    apiErrorMessage.value = null;
 
-    messageBoxTitle.value = "Upload Result"; // Title for API response
+    messageBoxTitle.value = "Upload Result";
     messageBoxType.value = "success";
     console.log("====> data: ", data.data.length);
 
@@ -632,9 +601,9 @@ const triggerAcceptApiCall = async (dataArray) => {
     apiResponseData.value = null;
     apiErrorMessage.value = error.message || 'An unknown error occurred during acceptance.';
 
-    messageBoxTitle.value = "Upload Failed"; // Title for API error
+    messageBoxTitle.value = "Upload Failed";
     messageBoxType.value = "error";
-    messageBoxContent.value = apiErrorMessage.value; // Just show the error message
+    messageBoxContent.value = apiErrorMessage.value;
 
     messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
@@ -653,19 +622,16 @@ const resetAfterProcess = () => {
   acceptedRows.value = [];
   total_record = 0;
   file_id = 0;
-  errorMessage.value = null; // Clear file error too
-  dataToSendToApi.value = []; // Should already be cleared by triggerAcceptApiCall, but safety.
+  errorMessage.value = null;
+  dataToSendToApi.value = [];
   validationErrors.value = [];
   apiResponseData.value = null;
   apiErrorMessage.value = null;
-  // messageBox state is reset in handleMessageBoxClose
 };
 
-
 const rejectAllData = async () => {
-  // Reset states for a new operation
   errorMessage.value = null;
-  rejectedRows.value = []; // Reset counts
+  rejectedRows.value = [];
   acceptedRows.value = [];
   showMessageBox.value = false;
   messageBoxPurpose.value = null;
@@ -679,9 +645,9 @@ const rejectAllData = async () => {
     messageBoxTitle.value = "Info";
     messageBoxType.value = "info";
     messageBoxContent.value = "No data or file selected to reject. Please upload a valid CSV file with data.";
-    messageBoxPurpose.value = 'apiResponse'; // Treat this initial check as a final response message
+    messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
-    isLoading.value = false; // End loading if not done by helper
+    isLoading.value = false;
     return;
   }
 
@@ -689,81 +655,67 @@ const rejectAllData = async () => {
     messageBoxTitle.value = "Warning";
     messageBoxType.value = "warning";
     messageBoxContent.value = `Cannot reject invalid file type. Please upload a file with 7, 8, or 16 columns.`;
-    messageBoxPurpose.value = 'apiResponse'; // Treat this as a final response message
+    messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
-    isLoading.value = false; // End loading
-    // Clear data state as it's an invalid file
-    resetAfterProcess(); // Clear all states including table/file
+    isLoading.value = false;
+    resetAfterProcess();
     return;
   }
 
-  // Note: Reject All doesn't involve frontend row-level validation,
-  // it just sends the file name for backend processing.
-  // So, no 'validation' message box needed for reject.
 
   const rejectUrl = `${apiUrl}reject?fileName=${encodeURIComponent(fileName.value)}&userId=${roleId}&recordCount=${total_record}`;
   console.log("Reject URL:", rejectUrl);
 
   try {
-    // makeApiRequest will throw on non-OK status, otherwise returns data
     const data = await makeApiRequest(rejectUrl, "POST", headers);
 
-    // API Success - Prepare API response message box
     apiResponseData.value = data;
     apiErrorMessage.value = null;
 
-    messageBoxTitle.value = "Rejection Result"; // Title for rejection
+    messageBoxTitle.value = "Rejection Result";
     messageBoxType.value = "success";
-    // Assuming reject response also has a message
     messageBoxContent.value = data.message || 'Rejection operation successful.';
-    // Note: Reject might not return accepted/rejected counts like 'accept' does.
-    // If it does, you can add them here similarly.
 
-    messageBoxPurpose.value = 'apiResponse'; // Set purpose to API response
-    showMessageBox.value = true; // Show the API response message box
 
-    // Clear table data and related states after successful API processing
+    messageBoxPurpose.value = 'apiResponse';
+    showMessageBox.value = true;
+
     resetAfterProcess();
 
 
   } catch (error) {
-    // API Error - Prepare API response message box
     apiResponseData.value = null;
     apiErrorMessage.value = error.message || 'An unknown error occurred during rejection.';
 
-    messageBoxTitle.value = "Rejection Failed"; // Title for rejection error
+    messageBoxTitle.value = "Rejection Failed";
     messageBoxType.value = "error";
     messageBoxContent.value = apiErrorMessage.value;
 
-    messageBoxPurpose.value = 'apiResponse'; // Set purpose to API response
-    showMessageBox.value = true; // Show the API response message box
-
-    // Do NOT clear table/file state on API error
+    messageBoxPurpose.value = 'apiResponse';
+    showMessageBox.value = true;
   }
-  // isLoading is handled by makeApiRequest's finally block
 };
 
 
 const acceptAllData = async () => {
-  // Reset states for a new operation (except file/table data which is already loaded)
   errorMessage.value = null;
-  rejectedRows.value = []; // Reset counts for current validation run
+  rejectedRows.value = [];
   acceptedRows.value = [];
-  showMessageBox.value = false; // Hide any previous message box
-  messageBoxPurpose.value = null; // Reset purpose
+  showMessageBox.value = false;
+  messageBoxPurpose.value = null;
   apiResponseData.value = null;
   apiErrorMessage.value = null;
-  dataToSendToApi.value = []; // Clear temp data storage
-  validationErrors.value = []; // Clear temp error storage
+  dataToSendToApi.value = [];
+  validationErrors.value = [];
 
 
   if (mappedObjects.value.length === 0 || !fileName.value) {
     messageBoxTitle.value = "Info";
     messageBoxType.value = "info";
     messageBoxContent.value = "No data or file selected to accept. Please upload a valid CSV file with data.";
-    messageBoxPurpose.value = 'apiResponse'; // Treat this initial check as a final response message
+    messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
-    isLoading.value = false; // End loading if not done by helper
+    isLoading.value = false;
     return;
   }
 
@@ -771,34 +723,30 @@ const acceptAllData = async () => {
     messageBoxTitle.value = "Warning";
     messageBoxType.value = "warning";
     messageBoxContent.value = `Cannot process invalid file type. Please upload a file with 7, 8, or 16 columns.`;
-    messageBoxPurpose.value = 'apiResponse'; // Treat this as a final response message
+    messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
-    isLoading.value = false; // End loading
-    // Clear data state as it's an invalid file
-    resetAfterProcess(); // Clear all states including table/file
+    isLoading.value = false;
+    resetAfterProcess();
     return;
   }
 
-  // --- Start Frontend Validation ---
-  isLoading.value = true; // Indicate validation is starting
+  isLoading.value = true;
   const recordsToProcess = mappedObjects.value;
   const currentValidationErrors = [];
   const currentAcceptedDataForApi = [];
-  const currentRejectedRowsIndices = []; // 0-based indices for temp storage
-  const currentAcceptedRowsIndices = []; // 0-based indices for temp storage
+  const currentRejectedRowsIndices = [];
+  const currentAcceptedRowsIndices = [];
 
   console.log("Starting frontend data validation loop...");
 
   for (let i = 0; i < recordsToProcess.length; i++) {
-    const originalRow = recordsToProcess[i]; // Use original mapped object
-    const formattedObj = { ...originalRow }; // Start with a copy
+    const originalRow = recordsToProcess[i];
+    const formattedObj = { ...originalRow };
     let rowIsValid = true;
 
     console.log(`--- Processing Row ${i + 1} ---`);
     console.log("Original Row Data (from mappedObjects):", originalRow);
 
-    // --- Field Validation Logic ---
-    // Consignment Number (Mandatory)
     const consignmentIdKey = headingMap["consignment number"];
     if (consignmentIdKey) {
       const rawConsignmentValue = originalRow[consignmentIdKey];
@@ -826,12 +774,10 @@ const acceptAllData = async () => {
       rowIsValid = false;
     }
 
-    // Date Validations based on file type (Mandatory dates checked here)
-    if (file_id === 1) { // Shipment letter
+    if (file_id === 1) {
       const bookingDateKey = headingMap["booking date"];
       const cardCreationDateKey = headingMap["card creation date"];
 
-      // Booking Date
       if (bookingDateKey) {
         const rawBookingDate = originalRow[bookingDateKey];
         if (rawBookingDate == null || String(rawBookingDate).trim() === "") {
@@ -855,7 +801,6 @@ const acceptAllData = async () => {
         rowIsValid = false;
       }
 
-      // Card Creation Date
       if (cardCreationDateKey) {
         const rawCardCreationDate = originalRow[cardCreationDateKey];
         if (rawCardCreationDate == null || String(rawCardCreationDate).trim() === "") {
@@ -880,10 +825,9 @@ const acceptAllData = async () => {
       }
 
 
-    } else if (file_id === 2) { // Delivered letter
+    } else if (file_id === 2) {
       const deliveryDateKey = headingMap["delivery date"];
 
-      // Delivery Date
       if (deliveryDateKey) {
         const rawDeliveryDate = originalRow[deliveryDateKey];
         if (rawDeliveryDate == null || String(rawDeliveryDate).trim() === "") {
@@ -907,10 +851,9 @@ const acceptAllData = async () => {
         rowIsValid = false;
       }
 
-    } else if (file_id === 3) { // Returned letter
+    } else if (file_id === 3) {
       const returnDateKey = headingMap["date of return shipment received at branch"];
 
-      // Return Date
       if (returnDateKey) {
         const rawReturnDate = originalRow[returnDateKey];
         if (rawReturnDate == null || String(rawReturnDate).trim() === "") {
@@ -934,7 +877,6 @@ const acceptAllData = async () => {
         rowIsValid = false;
       }
     }
-    // --- End Field Validation Logic ---
 
 
     console.log(`Row ${i + 1} - Final rowIsValid status: ${rowIsValid}`);
@@ -942,19 +884,16 @@ const acceptAllData = async () => {
 
     if (rowIsValid) {
       currentAcceptedDataForApi.push(formattedObj);
-      // Push original row index + 1 (for 1-based display)
       currentAcceptedRowsIndices.push(originalRow._originalIndex + 1);
       console.log(`Row ${i + 1} added to accepted data.`);
     } else {
-      // Push original row index + 1 (for 1-based display)
       currentRejectedRowsIndices.push(originalRow._originalIndex + 1);
       console.log(`Row ${i + 1} added to rejected rows list.`);
     }
     console.log(`--- Finished Row ${i + 1} ---`);
   }
 
-  // --- End Frontend Validation ---
-  isLoading.value = false; // Validation is complete
+  isLoading.value = false;
 
   console.log("Data validation loop finished.");
   console.log("Total Validation Errors collected:", currentValidationErrors.length);
@@ -963,19 +902,17 @@ const acceptAllData = async () => {
   console.log("Accepted Row Indices:", currentAcceptedRowsIndices);
   console.log("Rejected Row Indices:", currentAcceptedRowsIndices);
 
-  // Store validation results in state variables to be used after message box is closed
   validationErrors.value = currentValidationErrors;
   dataToSendToApi.value = currentAcceptedDataForApi;
   rejectedRows.value = currentRejectedRowsIndices;
   acceptedRows.value = currentAcceptedRowsIndices;
 
 
-  // Prepare and show the Validation Message Box
   if (validationErrors.value.length > 0) {
     messageBoxTitle.value = "Validation Warnings";
     messageBoxType.value = "warning";
     messageBoxContent.value = formatValidationErrorMessage(validationErrors.value);
-    messageBoxPurpose.value = 'validation'; // Set purpose to validation message
+    messageBoxPurpose.value = 'validation';
     showMessageBox.value = true;
 
   } else {
@@ -988,6 +925,107 @@ const acceptAllData = async () => {
 </script>
 
 <style scoped>
+.buttons-container{
+  display: flex;
+}
+.p-datatable .p-datatable-tbody>tr>td {
+  border: 1px solid #a9a9a9 !important;
+  border-width: 0 0 1px 1px !important;
+}
+.p-datatable{
+  padding: 8px;
+  background-color: rgb(162, 200, 168);
+  border: 2px solid white;
+  border-radius: 5px;
+}
+
+.table-container {
+  padding: 8px;
+  background-color: rgb(162, 200, 168);
+  border: 1px solid #ebeef5;
+  border-radius: 3px;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  max-height: 465px;
+  overflow-y: auto;
+
+  /* Style the scrollbar for Chrome, Safari, Edge */
+  &::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    border-radius: 10px;
+    background: #f1f1f1;
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background: #888;
+    /* Muted gray/green, adjust color to match screenshot precisely */
+    border-radius: 10px;
+    /* Optional: rounded corners for the thumb */
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #555;
+    /* Darker color on hover */
+  }
+
+  /* Hide the scrollbar buttons (arrows) for Webkit browsers */
+  &::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  scrollbar-width: thin;
+  scrollbar-color: #006363 #f1f1f1;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #1a1b1b;
+}
+
+.data-table thead {
+  position: sticky;
+  top: 0;
+  background-color: #f5f7fa;
+  z-index: 1;
+}
+
+.data-table th,
+.data-table td {
+  padding: 8px 7px;
+  border: 1px solid #ebeef5;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table th {
+  background-color: rgb(162, 200, 168);
+  font-weight: bold;
+}
+
+.data-table tbody tr:nth-child(odd) {
+  background-color: #fff;
+}
+
+.data-table tbody tr:nth-child(even) {
+  background-color: #fcfcfc;
+  /* Slightly different background for even rows (stripe effect) */
+}
+
+.data-table td[colspan][style*="text-align: center;"] {
+  font-style: italic;
+  color: #909399;
+}
+
 .balh-titlee {
   text-align: center;
   margin: 0;
@@ -997,19 +1035,20 @@ const acceptAllData = async () => {
   height: 60px;
 }
 
-.balh-headerr { 
+.balh-headerr {
   display: flex;
   flex-direction: row;
-  align-items: center; 
-  width: 100%; 
+  align-items: center;
+  width: 100%;
   padding: 0 20px;
-  box-sizing: border-box; 
+  box-sizing: border-box;
 }
 
-.balh-headerr > div:nth-child(2) {
+.balh-headerr>div:nth-child(2) {
   margin-left: auto;
   margin-right: auto;
 }
+
 .upload-empty-container {
   display: flex;
   flex-direction: row;
@@ -1035,9 +1074,7 @@ const acceptAllData = async () => {
 }
 
 .back-button-container {
-  margin-top: 1rem;
-  width: 100%;
-
+  margin-top: 2rem;
 }
 
 .balh-btn.back-btn {
@@ -1225,95 +1262,13 @@ const acceptAllData = async () => {
   font-size: 0.9em;
 }
 
-/* Table Section */
-.table-and-buttons-container {
-  width: 100%;
-  max-width: 1500px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-
-.tablecsv {
-  width: 100%;
-  overflow-x: auto;
-  max-height: 60vh;
-  overflow-y: hidden;
-  box-sizing: border-box;
-  border: 1px solid #cccccc;
-  border-radius: 4px;
-}
-
-.el-table {
-  width: 100%;
-  /* Ensure table takes full width of its container */
-  /* height="500" in template makes the body scroll internally */
-  border: none;
-  /* Remove border from el-table itself if container has it */
-  border-radius: 0;
-  /* Remove border-radius if container has it */
-}
-
-.el-table td.el-table__cell,
-.el-table th.el-table__cell {
-  border-bottom: 1px solid #f4f4f4;
-  border-right: none;
-  /* Ensure no vertical borders */
-  padding: 10px;
-  /* Adjusted padding */
-  box-sizing: border-box;
-  white-space: normal;
-  /* Allow text wrapping */
-  word-break: break-word;
-  /* Break long words */
-  vertical-align: top;
-  /* Align content to the top */
-}
-
-/* Style specifically for table headers */
-.el-table__header-wrapper th.el-table__cell {
-  background-color: #007a3b;
-  color: #ffffff;
-  font-weight: bold;
-  border-bottom: 2px solid #00a651;
-  text-align: center;
-  /* Center header text */
-  padding: 12px 10px;
-  /* Adjusted padding */
-}
-
-/* Remove the default inner border line Element Plus adds */
-.el-table__inner-wrapper::before {
-  height: 0;
-}
-
-/* Remove default border from Element Plus table if container has one */
-.el-table--border {
-  border: none;
-  border-radius: 0;
-}
-
-/* Add rounded corners to the top of the table header (on the container) */
-.tablecsv {
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
-  overflow: hidden;
-  /* Hide overflow from rounded corners */
-}
-
 /* Action Buttons */
 .action-buttons {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  /* Center buttons on small screens */
   gap: 15px;
-  /* Increased gap */
-  margin-top: 20px !important;
-  width: 100%;
-  /* Take full width */
+    width: 100%;
 }
 
 .action-buttons .el-button {
@@ -1321,10 +1276,7 @@ const acceptAllData = async () => {
   border-width: 1px;
   border-radius: 4px;
   padding: 10px 20px;
-  /* Increased padding */
-  height: auto;
   font-size: 1em;
-  /* Standard font size */
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
   min-width: 120px;
   /* Give buttons a minimum width */
@@ -1339,22 +1291,6 @@ const acceptAllData = async () => {
   --el-button-hover-bg-color: #007a3b;
   --el-button-active-border-color: #007a3b;
   --el-button-active-bg-color: #007a66;
-}
-
-.accept-btn {
-  /* Specific style overridden by .action-buttons .el-button[type="primary"] */
-  /* background-color: rgb(20, 168, 226); */
-  /* color: white; */
-  /* padding: 8px 15px; */
-  /* border-radius: 4px; */
-  /* border: none; */
-  /* cursor: pointer; */
-  /* font-weight: bold; */
-}
-
-.accept-btn:hover {
-  /* background-color: skyblue; */
-  /* color: black; */
 }
 
 .reject-btn {
@@ -1390,166 +1326,6 @@ const acceptAllData = async () => {
 }
 
 /* Message Box Responsiveness (Keeping styles here as requested) */
-.el-overlay.is-message-box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.6);
-  /* Slightly darker backdrop */
-  z-index: 2006;
-  padding: 10px;
-  /* Add padding for very small screens */
-  box-sizing: border-box;
-}
-
-.el-overlay-message-box {
-  /* This container helps with centering in Element Plus, keep it */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  /* Take full width of overlay */
-  height: 100%;
-  /* Take full height of overlay */
-}
-
-
-.el-message-box {
-  width: 95%;
-  /* Use percentage for width on smaller screens */
-  max-width: 500px;
-  /* Set a max-width for larger screens */
-  background-color: #ffffff;
-  max-height: 90vh;
-  /* Allow taller message boxes */
-  overflow: hidden;
-  border-radius: 8px;
-  /* Match main container border-radius */
-  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
-  /* More prominent shadow */
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  text-align: left;
-}
-
-.el-message-box__header {
-  background-color: #007a3b;
-  /* Consistent header color */
-  padding: 12px 18px;
-  /* Adjusted padding */
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  margin-bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
-
-.el-message-box__title {
-  color: white !important;
-  font-weight: bold;
-  font-size: 1.1em;
-  /* Slightly larger title */
-  padding-left: 0;
-  margin-bottom: 0;
-}
-
-.msg-text {
-  font-weight: bold;
-}
-
-.el-message-box__content {
-  margin-top: 0;
-  padding: 18px;
-  /* Adjusted padding */
-  color: #333;
-  font-size: 1em;
-  /* Standard font size */
-  overflow: hidden;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.el-message-box__container {
-  max-height: calc(90vh - 120px);
-  /* Adjusted calculation based on max-height and padding */
-  overflow-y: auto;
-  padding-right: 8px;
-  /* Space for scrollbar */
-  box-sizing: border-box;
-
-  &::-webkit-scrollbar {
-    width: 8px;
-    /* Increased scrollbar width */
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background-color: #b0b0b0;
-    /* Darker thumb */
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background-color: #e0e0e0;
-    /* Lighter track */
-  }
-
-  scrollbar-width: thin;
-  scrollbar-color: #b0b0b0 #e0e0e0;
-}
-
-.el-message-box__message {
-  display: block;
-}
-
-.p-text {
-  color: #333;
-  line-height: 1.6;
-  /* Improved line height */
-  font-size: 0.95em;
-  /* Slightly larger font size */
-}
-
-.el-message-box__btns {
-  display: flex;
-  /* Use flexbox for buttons */
-  justify-content: flex-end;
-  /* Align buttons to the right */
-  padding: 12px 18px;
-  /* Adjusted padding */
-  border-top: 1px solid #f0f0f0;
-  /* Lighter border */
-  flex-shrink: 0;
-  gap: 10px;
-  /* Add gap between buttons if more were added */
-}
-
-.el-message-box__btns .el-button {
-  background-color: #00a651;
-  /* Primary green */
-  border-color: #00a651;
-  color: white;
-  font-weight: bold;
-  border-width: 1px;
-  border-radius: 4px;
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-  --el-button-hover-border-color: #007a3b;
-  --el-button-hover-bg-color: #007a3b;
-  --el-button-active-border-color: #007a3b;
-  --el-button-active-bg-color: #007a3b;
-  padding: 8px 15px;
-  /* Standard button padding */
-  height: auto;
-  font-size: 0.9em;
-}
 
 button {
   cursor: pointer;
@@ -1601,20 +1377,8 @@ button {
     font-size: 1em;
   }
 
-  .el-table td.el-table__cell,
-  .el-table th.el-table__cell {
-    padding: 12px 15px;
-    /* Standard cell padding */
-  }
-
-  .el-table__header-wrapper th.el-table__cell {
-    padding: 14px 15px;
-    /* Slightly more header padding */
-    font-size: 1.05em;
-  }
-
   .action-buttons {
-    margin-top: 25px !important;
+    margin-top: 30px !important;
     justify-content: flex-start;
     /* Align left */
     flex-wrap: nowrap;
@@ -1809,112 +1573,6 @@ button {
   word-break: break-word;
 }
 
-/* --- Base Table Styles (Applied to all screen sizes unless overridden) --- */
-.tablecsv {
-  width: 100%;
-  max-width: 1500px;
-  overflow-x: auto;
-  max-height: 60vh;
-  overflow-y: auto;
-  box-sizing: border-box;
-}
-
-.el-table {
-  width: 100%;
-  /* Ensure table tries to take full width of its container */
-  /* If table content is wider than container, overflow-x: auto on parent handles it */
-}
-
-.el-table td.el-table__cell,
-.el-table th.el-table__cell {
-  border-bottom: 1px solid #f4f4f4;
-  border-right: none;
-  padding: 8px 10px;
-  /* Adjusted padding: Added 10px horizontal padding */
-  box-sizing: border-box;
-  /* Include padding in cell dimensions */
-}
-
-.el-table td.el-table__cell {
-  text-align: left;
-  /* Align text to the left in data cells */
-  white-space: normal;
-  /* Ensure text wraps */
-  word-break: break-word;
-  /* Break long words if necessary */
-  /* vertical-align: top; /* Optional: Align cell content to the top */
-}
-
-/* Style specifically for table headers */
-.el-table__header-wrapper th.el-table__cell {
-  background-color: #007a3b;
-  color: #ffffff;
-  font-weight: bold;
-  border-bottom: 2px solid #00a651;
-  text-align: center;
-  /* Center header text */
-}
-
-/* Ensure the last cell in the header row doesn't have a right border */
-.el-table__header-wrapper th.el-table__cell:last-child {
-  border-right: none;
-}
-
-/* Style for regular table rows */
-.el-table__body tr.el-table__row {
-  background-color: #fff;
-}
-
-/* Style for striped table rows */
-.el-table__body tr.el-table__row--striped {
-  background-color: #f9f9f9;
-}
-
-/* Style for table row hover state */
-.el-table__body tr.el-table__row:hover>td {
-  background-color: #e9f6ee !important;
-}
-
-/* Remove the default inner border line Element Plus adds */
-.el-table__inner-wrapper::before {
-  height: 0;
-}
-
-/* Add subtle bottom border to the entire table */
-.el-table--border {
-  border: 1px solid #cccccc;
-  border-radius: 4px;
-}
-
-.tablecsv .el-button {
-  font-weight: bold;
-  border-width: 1px;
-  border-radius: 4px;
-  padding: 8px 15px;
-  height: auto;
-  font-size: 0.9rem;
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-}
-
-.tablecsv .el-button[type="primary"] {
-  background-color: #00a651;
-  border-color: #00a651;
-  color: white;
-  --el-button-hover-border-color: #007a3b;
-  --el-button-hover-bg-color: #007a3b;
-  --el-button-active-border-color: #007a3b;
-  --el-button-active-bg-color: #007a3b;
-}
-
-/* Button container for better spacing on small screens */
-.tablecsv+div {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 15px !important;
-}
-
 .empty-state {
   background-color: rgba(0, 0, 0, 0.15);
   margin-top: 15px;
@@ -1926,139 +1584,6 @@ button {
   display: flex;
   justify-content: center;
   align-items: center;
-}
-
-/* Message Box Responsiveness */
-.el-overlay.is-message-box {
-  display: flex;
-  /* Use flexbox to center the message box */
-  align-items: center;
-  /* Center vertically */
-  justify-content: center;
-  /* Center horizontally */
-  position: fixed;
-  /* Use fixed positioning */
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  /* Add a backdrop */
-  z-index: 2006;
-}
-
-.el-message-box {
-  width: 90%;
-  /* Use percentage for width */
-  max-width: 500px;
-  /* Set a max-width for larger screens */
-  /* Removed top, left, and transform as flexbox handles centering */
-  background-color: #ffffff;
-  max-height: 80vh;
-  overflow: hidden;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.08);
-  display: flex;
-  /* Added flex display */
-  flex-direction: column;
-  /* Stack header, content, and buttons vertically */
-}
-
-.el-message-box__header {
-  background-color: #007a3b;
-  padding: 10px 15px;
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
-  margin-bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-  /* Prevent header from shrinking */
-}
-
-.el-message-box__title {
-  color: white !important;
-  font-weight: bold;
-  font-size: 1em;
-  padding-left: 0;
-  margin-bottom: 0;
-  --el-messagebox-title-color: white;
-}
-
-.msg-text {
-  font-weight: bold;
-}
-
-.el-message-box__content {
-  margin-top: 0;
-  padding: 15px;
-  color: #333;
-  font-size: 14px;
-  overflow: hidden;
-  flex-grow: 1;
-  /* Allow content to take available space */
-  display: flex;
-  flex-direction: column;
-}
-
-.el-message-box__container {
-  max-height: calc(80vh - 100px);
-  /* Adjusted calculation */
-  overflow-y: auto;
-  padding-right: 5px;
-  box-sizing: border-box;
-
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background-color: #cccccc;
-    border-radius: 3px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background-color: #f4f4f4;
-  }
-
-  scrollbar-width: thin;
-  scrollbar-color: #cccccc #f4f4f4;
-}
-
-.el-message-box__message {
-  display: block;
-}
-
-.p-text {
-  color: #333;
-  height: auto;
-  line-height: 1.5;
-  font-size: 0.9em;
-}
-
-.el-message-box__btns {
-  justify-content: flex-end;
-  padding: 10px 15px 10px 0;
-  border-top: 1px solid #f4f4f4;
-  flex-shrink: 0;
-  /* Prevent buttons from shrinking */
-}
-
-.el-message-box__btns .el-button {
-  background-color: #00a651;
-  border-color: #00a651;
-  color: white;
-  font-weight: bold;
-  border-width: 1px;
-  border-radius: 4px;
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-  --el-button-hover-border-color: #007a3b;
-  --el-button-hover-bg-color: #007a3b;
-  --el-button-active-border-color: #007a3b;
-  --el-button-active-bg-color: #007a3b;
-  padding: 8px 15px;
-  height: auto;
 }
 
 button {
@@ -2094,30 +1619,6 @@ button {
     padding: 10px;
   }
 
-  .el-table td.el-table__cell,
-  .el-table th.el-table__cell {
-    padding: 12px 15px;
-  }
-
-  .el-table td.el-table__cell {
-    white-space: normal;
-    /* Ensure text wraps */
-    word-break: break-word;
-    /* Break long words if necessary */
-  }
-
-  .el-table__header-wrapper th.el-table__cell {
-    text-align: center;
-    /* Center header text on larger screens */
-    padding: 12px 15px;
-    /* Revert/Adjust padding for larger screens */
-  }
-
-  .tablecsv+div {
-    /* margin-top: 20px !important; */
-    justify-content: flex-start;
-    flex-wrap: nowrap;
-  }
 
   .empty-state {
     margin-top: 20px;

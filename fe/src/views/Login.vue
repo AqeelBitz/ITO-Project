@@ -1,45 +1,45 @@
 <template>
-  <el-row>
-    <div class="heading">
-      <h1><b style="font-weight: bold;">CONSIGNMENT TRACKING SYSTEM</b></h1>
-    </div>
-  </el-row>
-  <el-row>
-    <el-col :span="12">
-      <div class="img"><img src="../assets/download.png" alt="logo" width="60%"></div>
-    </el-col>
-    <el-col :span="12" class="box">
-      <fieldset class="border border-dark border-2 p-2">
-        <legend class="legend-text float-none w-auto p-2" style="">Login
-        </legend>
-        <div class="login-form">
-          <el-form :model="formData" @submit.prevent="handleSubmit" ref="ruleFormRef" style="max-width: 70%" status-icon
-            :rules="rules" label-width="auto" class="demo-ruleForm">
-            <el-form-item label="Username" :error="usernameError" class="label-color">
-              <el-input v-model="formData.username" @change="validateUsername" />
-            </el-form-item>
-            <el-form-item label="Password" :error="passwordError" class="label-color">
-              <el-input v-model="formData.password" type="password" @change="validatePassword" />
-            </el-form-item>
-            <el-form-item label="Branch Code" :error="branchCodeError" class="label-color">
-              <el-input v-model="formData.branchCd" @change="validateBranchCode" />
-            </el-form-item>
-            <p v-if="loading">Logging in..</p>
-            <p v-if="error">Error: {{ error }}</p>
-          </el-form>
-        </div>
-      </fieldset>
-      <div class="buttons">
-        <div>
-          <button type="primary" native-type="submit" @click="handleSubmit" class="login-btn">Login</button>
-        </div>
-        <div>
-          <button @click="resetForm" class="reset-btn">Reset</button>
-        </div>
-      </div>
-    </el-col>
-  </el-row>
-
+  <div class="main-container">
+    <el-row>
+      <h1><b style="font-weight: bold;font-size: 36px;">CONSIGNMENT TRACKING SYSTEM</b></h1>
+    </el-row>
+    <el-row class="main-div">
+        <el-col :span="10">
+            <div class="bahl-logo-container">
+                <img class="bahl-logo-img" src="../assets/download.png" alt="">
+            </div>
+        </el-col>
+        <el-col :span="2"></el-col>
+        <el-col :span="9" class="login-container">
+          <fieldset class="border border-dark border-2 p-2">
+            <legend class="legend-text float-none w-auto p-2" style="">Login</legend>
+          <div class="login-form-wrapper">
+            <form :model="formData" @submit.prevent="handleSubmit" ref="ruleFormRef"
+               status-icon :rules="rules" label-width="auto" class="login-form-container">
+                <div class="login-form">
+                    <div style="display: flex; margin-bottom: 24px; gap: 24px;">
+                        <input :error="branchCodeError" v-model="formData.branchCd" @change="validateBranchCode" @keydown="checkDigits" class="form-control" style="width: 21%;" type="text">
+                        <input :error="usernameError" v-model="formData.username" @change="validateUsername" class="form-control" maxlength="10" style="width: 75%; margin-right: -62px;" type="password">
+                    </div>
+                    <div>
+                        <input :error="passwordError" v-model="formData.password" type="password" @change="validatePassword" class="form-control" maxlength="10" >
+                    </div>
+                </div>
+            </form>
+          </div>
+          </fieldset>
+            <div class="button-container">
+                    <div>
+                        <button type="primary" native-type="submit" @click="handleSubmit" :disabled="isInvalid" class="primary-button">Sign In</button>
+                    </div>
+                    <div>
+                        <button @click="resetForm" type="button" style=" width:100%;" class="primary-button reset-button">Reset</button>
+                    </div>
+                
+          </div>
+        </el-col>
+    </el-row>
+  </div>
   <div v-if="showMessageBox" class="el-overlay is-message-box" style="z-index: 2006;">
     <div class="el-overlay-message-box">
       <div role="dialog" aria-label="Message" aria-modal="true" class="el-message-box is-draggable">
@@ -64,12 +64,23 @@
   </div>
 </template>
 
-
 <script setup>
 import { reactive, ref } from 'vue';
-import { ElForm, ElFormItem, ElInput, ElButton } from 'element-plus'; // Removed ElMessage import
+import { ElForm, ElFormItem, ElInput, ElButton } from 'element-plus'; 
 import { useRouter } from 'vue-router';
 
+const checkDigits = (event) => {
+    if (
+        event.key.length === 1 &&
+        (
+            isNaN(Number(event.key)) ||
+            branchCode.value.length >= maxLength
+        )
+    )
+    {
+        event.preventDefault();
+    }
+}
 
 const router = useRouter();
 const formData = reactive({
@@ -175,8 +186,6 @@ const handleSubmit = () => {
   }
 };
 
-
-
 const resetForm = () => {
   formData.username = '';
   formData.password = '';
@@ -191,17 +200,56 @@ const closeMessageBox = () => {
 };
 </script>
 
-
-
 <style scoped>
+.login-container{
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.login-button{
+  background-color: #cccccc;
+}
+.reset-button{
+  background-color: rgb(0, 155, 131);
+}
 .p-text {
   color: #000;
+}
+
+.el-overlay.is-message-box {
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 2006;
+}
+
+.legend-text{
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.border-dark {
+  padding: 5px;
+    border-width: 3px !important;
+    border: 2px solid #212529;
+    /* width: 100%; */
+    margin-bottom: 20px;
+    /* margin-top: 170px; */
+    /* margin-left: 100px; */
+    box-sizing: border-box;
 }
 
 .msg-text {
   font-weight: bold;
   display: flex;
   justify-content: center;
+  text-align: center;
 }
 
 .el-message-box__header {
@@ -213,17 +261,18 @@ const closeMessageBox = () => {
   color: var(--el-messagebox-title-color);
   --el-messagebox-title-color: #000;
   font-weight: 700;
-}
-
-.el-message-box {
-  background-color: rgb(160, 200, 168);
-}
-
-.el-message-box__title {
   padding-left: 0;
   margin-bottom: 0;
   font-size: var(--el-messagebox-font-size);
   line-height: 1;
+}
+
+.el-message-box {
+  background-color: rgb(160, 200, 168);
+  width: 90%;
+  max-width: 400px;
+  margin: auto;
+  margin-top: 250px;
 }
 
 .el-message-box__content {
@@ -234,6 +283,7 @@ const closeMessageBox = () => {
   padding: 10px var(--el-messagebox-padding-primary);
   color: var(--el-messagebox-content-color);
   font-size: var(--el-messagebox-content-font-size);
+  text-align: center;
 }
 
 .el-button--primary {
@@ -249,150 +299,116 @@ const closeMessageBox = () => {
 
 .el-message-box__btns {
   justify-content: center;
-}
-
-.login-btn {
-  height: 40px;
-  width: 200%;
-  background-color: #cccccc;
-  border: black;
-  color: black;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 0%;
-}
-
-.reset-btn {
-  height: 40px;
-  width: 200%;
-  background-color: rgb(0, 155, 131);
-  border: black;
-  color: black;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 0%;
-}
-
-.buttons {
   display: flex;
-  justify-content: space-between;
-  width: 59%;
-  margin-top: 15px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.el-form {
-  display: contents;
+.form-control {
+    display: block;
+    width: 100%;
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #ced4da;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border-radius: .25rem;
+    transition: border-color .15sease-in-out, box-shadow .15sease-in-out;
 }
 
-.box {
-  margin-top: 190px;
+.primary-button {
+    padding: 0px 20px;
+    height: 40px;
+    width: 100%;
+    border: black;
+    color: black;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 0%;
+
 }
 
-.border-dark {
-  border: 2px solid #212529;
-  width: 500px;
+.primary-button[disabled] {
+    padding: 0px 20px;
+    height: 40px;
+    width: 100%;
+    background-color: #cccccc;
+    border: black;
+    color: black;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 0%;
 }
 
-legend {
-  font-family: Arial;
-  font-size: 22px;
-  font-weight: bold;
-}
-
-.img {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-.heading {
-  margin-bottom: 15px;
-  width: -webkit-fill-available;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: black;
-  font-weight: bolder;
-  font-size: large;
+.form-control:focus {
+    color: #212529;
+    background-color: #fff;
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .25);
 }
 
 .login-form {
-  justify-content: center;
-  align-items: center;
-  /* margin-top: 190px; */
+    border: 2px var(--border-primary) solid;
+    padding: 8px;
+    margin-bottom: 20px;
+    margin-top: -25px;
+    position: relative;
+    padding-top: 40px;
 }
 
-.custom-button {
-  margin-left: 215px;
-  color: black;
-  background-color: #afafaf;
-  border-color: #afafaf;
-  width: 80px;
-  height: 35px;
-  border-width: 2px;
-  font-size: 15.5px;
+.login-form-wrapper{
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: flex-end;
 }
 
-.custom-button:hover {
-  border-color: grey;
-  background-color: #afafaf;
-  color: black;
+
+.main-container {
+  margin: 0% 4% 0% 4%;
 }
 
-.reset-button:hover {
-  border-color: grey;
-  border-width: 2px;
-  background-color: #afafaf;
-  color: black;
-
+.main-div {
+  padding-top: 5%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
 }
 
-.reset-button {
-  color: black;
-  background-color: #afafaf;
-  border-color: #afafaf;
-  width: 80px;
-  height: 35px;
-  font-size: 15.5px;
+.main-header-1 {
+    padding-bottom: 4%;
+    font-weight: 500;
+    font-size: 38px;
 }
 
-.form>div {
-
-  border: 2px solid white;
-  padding: 10%;
-  border-radius: 2%;
+.bahl-logo-container {
+    width: 100%;
 }
 
-.class {
+.button-container {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 17rem;
+  padding-bottom: 1rem;
+    
 }
 
-.heading {
-  display: flex;
-  justify-content: center;
+.bahl-logo-img {
+  width: 27vw;
+  vertical-align: middle;
+}
+
+.error-message{
+  color: var(--white);
   font-weight: bolder;
-}
-
-.container {
-  padding-top: 1.5rem !important;
-  padding-bottom: 1.5rem !important;
-}
-
-.label-color :deep(.el-form-item__label) {
-  color: #000000;
-  font-size: 16px;
-}
-
-.input-field {
-  height: 40px;
-  border-radius: 5px;
-  /* background-color: #c1dabf; */
-  padding: 2px;
-}
-
-.input-field:hover {
-  background-color: #c1dabf;
+  font-size: 2vw;
+  margin-top: 8px;
 }
 </style>
