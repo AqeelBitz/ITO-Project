@@ -4,13 +4,14 @@ import axios from 'axios';
 
 export const searchMachine = setup({
     actors: {
-        search: fromPromise(async ({ input, context }) => {
+        search: fromPromise(async ({ input }) => {
+            console.log("inside search: ", input);
 
-            const key = Object.keys(input.query.query)[0];
-            const value = input.query.query[key];
-            const token = input.query.headers.authorization;
-            console.log("token: ", token);
+            const token = input.authToken;
+            // console.log("token: ", token);
+            const key = Object.keys(input.queryparams)[0];
             console.log("FSM Actor: search actor invoked with key:", key)
+            const value = input.queryparams[key];
             console.log("FSM Actor: search actor invoked with value:", value)
 
             const header = {
@@ -20,46 +21,67 @@ export const searchMachine = setup({
 
             // console.log("FSM: Performing search for:", query);
             const url = `http://10.51.41.13:8082/consignments/search?${key}=${value}`;
-
             try {
                 console.log("inside try block")
                 const response = await fetch(url, {
                     method: 'GET',
                     headers: header,
                 });
+                console.log("response type: ", typeof(response));
+                console.log("response status: ", response.status);
+                console.log("response headers: ", response.headers);
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    const status = response.status;
-                    const message = errorData?.message || 'Search failed';
-                    throw { status, message };
+                    console.log("response not (ok): ");
+                    let errorMessage;
+                    try {
+                        const error = await response.json();
+                        errorMessage = error;
+                    } catch (parseError) {
+                        const textError = await response.text();
+                        errorMessage = textError;
+                        console.error("Error parsing JSON error:", parseError);
+                    }
+                    console.log("====>error: ", errorMessage);
+                    return  errorMessage;
                 }
 
+            
                 const data = await response.json();
                 console.log("Got successful response: ", data);
-                return data;
+                if(data){
+                    return data;
+                }
 
-            } catch (error) {
-                console.error("Fetch error:", error);
-                throw error; // Re-throw the error to be caught by XState
+            } catch (err) {
+                console.error("Fetch error:", err.message);
+
+                return err;
             }
         }),
+    },
+
+    actions: {
+
+        searchQuery:({context},params)=>{
+            console.log("coming here---->")
+        },
     },
 }).createMachine({
     id: 'search',
     initial: 'idle',
-    context: {
-        token: undefined,
-        query: null,
-        results: null,
-        errorMessage: null,
-    },
+    context: ({input})=>({
+        token: input.authToken,
+        query: input.queryparams,
+        result: '',
+        errorMessage: '',
+        error: '',
+    }),
     states: {
         idle: {
             on: {
                 SUBMIT: {
                     target: "searching",
-                    actions: 'assignInputAndTokenToContext', // New action
                 },
             },
         },
@@ -67,38 +89,39 @@ export const searchMachine = setup({
             invoke: {
                 id: 'searchActor',
                 src: 'search',
-                input: ({ context, event }) => (event.input),
+                input: ({ context }) => {
+                    console.log("context: >", context)
+                    return{
+                        queryparams:context.query,
+                        authToken:context.token
+                    }
+                    
+                },
                 onDone: {
                     target: 'success',
-                    // actions: 'assignResults',
-                    actions: assign({ // Use assign directly here
-                        results: ({ event }) => event.output,
-                        errorMessage: null,
+                    actions: assign({ 
+                        result: ({ event }) => event.output,
                     }),
                 },
                 onError: [
                     {
                         target: 'searchFailed',
-                        cond: ({ event }) => event.error?.status === 404,
-                        actions: 'assignNotFoundError',
-                    },
-                    {
-                        target: 'searchFailed',
-                        actions: 'assignError',
+                        actions: assign({
+                            error: ({ event }) => event.message //'Search failed',
+                          })
                     }
                 ],
             },
         },
         success: {
-            type: 'final',
-            actions: assign({
-                results: ({ event }) => event.output,
-            })
+            entry:[{type:"searchQuery"}],
+            type: "final",
+        
         },
         searchFailed: {
             type: 'final',
             entry: (context) => {
-                console.log('FSM: Search failed. Error:', context.errorMessage);
+                console.log('FSM: Search failed. Error:', context);
             },
         },
         noResults: {
@@ -115,26 +138,5 @@ export const searchMachine = setup({
         }
     },
 }, {
-    actions: {
-        assignInputAndTokenToContext: assign(({ event }) => ({
-            query: event.input.query,
-            token: event.token, // Assign the token to context
-        })),
-        assignResults: assign(({ event }) => {
-
-            console.log("FSM Action: assignResults is running with event.output:", event.output);
-            return {
-                results: event.output,
-                errorMessage: null,
-            }
-        }),
-        assignError: assign(({ event }) => ({
-            results: null,
-            errorMessage: event.error.message,
-        })),
-        assignNotFoundError: assign(({ event }) => ({
-            results: null,
-            errorMessage: 'No record found for the provided consignment ID.',
-        })),
-    },
+   
 });

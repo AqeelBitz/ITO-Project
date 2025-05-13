@@ -105,7 +105,6 @@
             </div>
           </div>
         </div>
-
       </div>
 
       <el-dialog v-model="reportModalVisible" title="Generate File Upload History Report" width="30%" center
@@ -113,9 +112,12 @@
         <div class="modal-content">
           <p>Please select the date range for the report.</p>
           <el-date-picker v-model="fromDatePicker" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
-            placeholder="From Date" style="margin-right: 10px;" />
+            placeholder="From Date" style="margin-right: 10px; margin-bottom: 10px;" />
           <el-date-picker v-model="toDatePicker" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
-            placeholder="To Date" />
+            placeholder="To Date" style="margin-right: 10px;" />
+          <div v-if="dateErrorMessage" class="error-message">
+            {{ dateErrorMessage }}
+          </div>
           <div v-if="reportError" class="error-message">
             {{ reportError }}
           </div>
@@ -141,7 +143,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import type { TableInstance } from 'element-plus';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus'; // Import ElMessage for notifications
@@ -152,30 +154,41 @@ const input = ref('');
 const select = ref('');
 const errorMessage = ref<string | null>(null);
 const tableData = ref<TableRow[]>([]);
-// Initialize date pickers for the modal
-const fromDatePicker = ref<string | null>(null); // Use null for initial state
-const toDatePicker = ref<string | null>(null); // Use null for initial state
-
-// Modal state
 const reportModalVisible = ref(false);
 const isGeneratingReport = ref(false);
 const reportError = ref<string | null>(null);
+const dateErrorMessage = ref<string | null>(null);
+const fromDatePicker = ref<string | null>(null);
+const toDatePicker = ref<string | null>(null);
+
+watch([fromDatePicker, toDatePicker], ([newFromDate, newToDate]) => {
+  if (newFromDate && newToDate) {
+    const from = new Date(newFromDate);
+    const to = new Date(newToDate);
+    if (from > to) {
+      dateErrorMessage.value = 'From Date must be earlier than To Date.';
+    } else {
+      dateErrorMessage.value = null;
+    }
+  } else {
+    dateErrorMessage.value = null;
+  }
+});
 
 
 // Function to open the report modal
 const openReportModal = () => {
   reportModalVisible.value = true;
-  // Optionally reset dates when opening the modal
-  // fromDatePicker.value = null;
-  // toDatePicker.value = null;
-  reportError.value = null; // Clear previous errors
+  reportError.value = null;
 };
 const goBack = () => {
   router.push('/main');
 }
-// This function is now called from within the modal
 const viewReport = async () => {
-  reportError.value = null; // Clear previous errors
+  if (dateErrorMessage.value) {
+    return;
+  };
+  reportError.value = null; 
   if (!fromDatePicker.value || !toDatePicker.value) {
     reportError.value = 'Please select both From and To dates.';
     return;
@@ -213,7 +226,6 @@ const viewReport = async () => {
       } catch (e) {
         console.error("Error parsing response body", e);
       }
-      // Check for specific empty data response structure if applicable
       if (response.status === 400 && errorBody && errorBody.message === "No data found for the given date range.") {
         reportError.value = "No data found for the selected date range.";
       } else {
@@ -221,7 +233,7 @@ const viewReport = async () => {
           status: response.status,
           statusText: response.statusText,
           message: `HTTP error! Status: ${response.status}`,
-          body: errorBody // this works because you're creating the object here
+          body: errorBody 
         };
       }
       isGeneratingReport.value = false; // End loading state
@@ -284,17 +296,24 @@ const searchButton = async () => {
     });
     if (!response.ok) {
       const error = await response.json();
+      console.log("res error: ",error);
       errorMessage.value = error.message || 'Failed to fetch data.';
       tableData.value = [];
       return;
     }
     const res = await response.json();
-    const data = res.data.data;
-    // Ensure the API returns an array. If it returns a single object, wrap it in an array.
+    console.log("res===> ", res);
+    if(res.status===404){
+      tableData.value = [];
+      errorMessage.value = res.message;
+      return
+    }
+    const data = res.data;
     tableData.value = Array.isArray(data) ? data : [data];
   } catch (error: any) {
     errorMessage.value = error.message || 'An unexpected error occurred.';
     tableData.value = [];
+    
   }
 };
 
@@ -330,11 +349,12 @@ const multipleTableRef = ref<TableInstance | null>(null);
 </script>
 
 <style scoped>
-.back-container{
+.back-container {
   padding-left: 5vw;
   display: flex;
   justify-content: flex-end;
 }
+
 .balh-btn.back-btn {
   background-color: #d1d6da;
   color: var(--balh-white);
@@ -421,7 +441,8 @@ const multipleTableRef = ref<TableInstance | null>(null);
 .back-button-container {
   margin-top: 2rem;
 }
-.viewer-container{
+
+.viewer-container {
   height: 90vh;
   display: flex;
   flex-direction: column;
@@ -430,6 +451,7 @@ const multipleTableRef = ref<TableInstance | null>(null);
   /* box-shadow: 0 4px 15px rgb(0 0 0 / 28%); */
   /* padding-left: 50px; */
 }
+
 .p-datatable .p-datatable-tbody>tr>td {
   border: 1px solid #a9a9a9 !important;
   border-width: 0 0 1px 1px !important;

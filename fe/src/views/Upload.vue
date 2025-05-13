@@ -16,13 +16,10 @@
       <h1>Upload File</h1>
     </div>
     <div class="upload-page-container">
-      <!-- <div class="upload-container"> -->
-
       <el-upload ref="uploadRef" class="upload-demo" action="" :auto-upload="false" :show-file-list="false"
         accept=".csv" @change="handleFileChange">
         <template #trigger>
-          <el-button id="file_input" @click="triggerFileUpload">Select
-            File</el-button>
+          <el-button id="file_input">Select File</el-button>
         </template>
         <template #tip>
           <div class="upload-tip">csv files with a size less than 500MB</div>
@@ -76,23 +73,33 @@
         </div>
 
       </div>
-      <div v-else-if="!fileName && !errorMessage" class="empty-state" @click="triggerFileUpload">
-        <div class="upload-empty-container">
-          <div style="font-size: 90px; padding-right: 15px;">
-            <el-icon class="el-icon--upload" viewBox="0 0 24 24"><upload-filled /></el-icon>
-          </div>
-          <div>
-            <p>No file selected yet.</p>
-          </div>
+      <div
+      v-else-if="!fileName && !errorMessage"
+      class="empty-state"
+      @click="triggerFileUpload"
+      @dragover.prevent="onDragOver"
+      @dragenter.prevent="onDragOver"
+      @dragleave.prevent="onDragLeave"
+      @drop.prevent="onDrop"
+      :class="{ 'drag-over': isDragging }"
+    >
+      <div class="upload-empty-container">
+        <div style="font-size: 90px; padding-right: 15px;">
+          <el-icon class="el-icon--upload" viewBox="0 0 24 24"
+            ><upload-filled
+          /></el-icon>
+        </div>
+        <div>
+          <p>Drag and drop file here or click to select.</p>
         </div>
       </div>
+    </div>
       <div
         v-else-if="fileName && (tableData.length === 0 || (columns.length === 1 && columns[0].prop === 'placeholder')) && !errorMessage"
         class="empty-state">
 
         <p>File selected but no data or valid columns found.</p>
-        <!-- </div> -->
-      </div>
+        </div>
 
       <MessageBox :visible="showMessageBox" :title="messageBoxTitle" :content="messageBoxContent" :type="messageBoxType"
         @close="handleMessageBoxClose" />
@@ -106,6 +113,10 @@ import { ref } from 'vue';
 import Papa from 'papaparse';
 import MessageBox from './MessageBox.vue';
 import { useRouter } from 'vue-router';
+import { UploadFilled } from '@element-plus/icons-vue'
+import { Loading } from '@element-plus/icons-vue' // Import Loading icon
+
+
 const router = useRouter();
 
 const errorMessage = ref(null); // For initial file/parsing errors
@@ -125,6 +136,8 @@ const dataToSendToApi = ref([]);
 const validationErrors = ref([]);
 const rejectedRows = ref([]);
 const acceptedRows = ref([]);
+const isDragging = ref(false); // Corrected: Should be ref(false)
+
 
 let file_id = 0;
 let total_record;
@@ -134,14 +147,40 @@ const columns = ref([]);
 const uploadRef = ref(null);
 const mappedObjects = ref([]);
 
+const onDragOver = (event) => {
+  event.preventDefault(); // Prevent default browser behavior
+  isDragging.value = true;
+  console.log('Drag Over Event Triggered', event.type); // Add this log
+};
 
+const onDragLeave = (event) => {
+  event.preventDefault(); // Prevent default browser behavior
+  isDragging.value = false;
+  console.log('Drag Leave Event Triggered', event.type); // Add this log
+};
+
+const onDrop = (event) => {
+  event.preventDefault(); // Prevent default browser behavior
+  isDragging.value = false;
+  console.log('Drop Event Triggered', event.type); // Add this log
+  const droppedFiles = event.dataTransfer.files;
+  console.log('Dropped Files:', droppedFiles); // Log the files list
+  if (droppedFiles.length > 0) {
+    console.log('Processing dropped files...'); // Log before processing
+    // Call a function to process the dropped files
+    processFiles(droppedFiles); // Call the new processFiles function
+  }
+  else{
+    console.log('No files dropped.'); // Log if fileList is empty
+  }
+};
 const headingMap = {
   "consignment number": "consignment_id",
   "courier": "courier",
   "booking date": "booking_date",
   "account number": "account_no",
   "account title": "account_title",
-  "receiverâ€™s cnic": "receiver_cnic",
+  "receiverâ€™s cnic": "receiver_cnic", // Note: This header has a non-standard char
   "sb/ cb": "shipping_bill",
   "address": "address",
   "city": "city",
@@ -166,163 +205,55 @@ const headingMap = {
 const goBack = () => {
   router.push('/main');
 }
-const triggerFileUpload = () => {
-  if (uploadRef.value) {
-    console.log("uploadRef.value: ", uploadRef.value);
-    const fileInput = uploadRef.value.$el ? uploadRef.value.$el.querySelector('input[type="file"]') : uploadRef.value.$refs.input?.$el?.querySelector('input[type="file"]'); // Adjusted access methods
-    if (fileInput) {
-      fileInput.click();
-    } else {
-      console.error("File input element not found on uploadRef.");
-      const fallbackInput = document.querySelector('#file_input input[type="file"]');
-      if (fallbackInput) {
-        fallbackInput.click();
-      } else {
-        console.error("Fallback file input element also not found.");
-      }
-    }
-  }
-};
 
-const formatDate = (dateString) => {
-  console.log("Input dateString:", dateString);
-  if (!dateString) {
-    console.log("Output dateString (empty):", "");
-    return null; // Return null for empty or null input
-  }
-  // Attempt dd-MM-yyyy
-  const parts_dmy = dateString.split('-');
-  if (parts_dmy.length === 3) {
-    const day = parts_dmy[0];
-    const month = parts_dmy[1];
-    const year = parts_dmy[2];
-    // Check if parts are valid numbers and year is likely a year
-    if (!isNaN(day) && !isNaN(month) && !isNaN(year) && year.length === 4) {
-      // Basic check for plausible month/day ranges (optional but helps filter garbage)
-      const dayInt = parseInt(day, 10);
-      const monthInt = parseInt(month, 10);
-      if (dayInt >= 1 && dayInt <= 31 && monthInt >= 1 && monthInt <= 12) {
-        const formattedDate = `${year}-${month}-${day}`; // Format toyyyy-MM-dd
-        console.log("Output dateString (dd-MM-yyyy parsed):", formattedDate);
-        return formattedDate;
-      }
-    }
+// Modified to be used by both el-upload and drag-and-drop
+const processFiles = (files) => {
+  // This function processes a FileList (from drag/drop) or a single File (from el-upload)
+  // Need to normalize input to always be an array-like list of File objects
+  const fileList = files instanceof FileList ? files : [files];
+
+  if (fileList.length === 0) {
+    errorMessage.value = 'No file selected or dropped.';
+    return;
   }
 
-  // Attempt yyyy-MM-dd (standard format Date can often parse directly)
-  try {
-    const date = new Date(dateString);
-    // Check if Date object is valid and represents the input string reasonably
-    // This is a basic check; for strict validation, regex or a date library is better.
-    // Simple check: Does parsing and reformatting give the same year?
-    if (!isNaN(date.getTime()) && date.getFullYear() === parseInt(dateString.substring(0, 4), 10)) {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const formattedDate = `${year}-${month}-${day}`;
-      console.log("Output dateString (parsed by Date object):", formattedDate);
-      return formattedDate;
-    }
-  } catch (error) {
-    console.log("Error parsing date with Date object:", dateString, error);
+  // Process the first file in the list (assuming single file upload/drop)
+  const file = fileList[0];
+
+  // Basic file type and size validation
+  if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+    errorMessage.value = 'Invalid file type. Please upload a CSV file.';
+    // Reset other state variables
+    fileName.value = '';
+    tableData.value = [];
+    columns.value = [];
+    mappedObjects.value = [];
+    total_record = 0;
+    file_id = 0;
+    rejectedRows.value = [];
+    acceptedRows.value = [];
+    dataToSendToApi.value = [];
+    validationErrors.value = [];
+    return;
   }
 
-  // Attempt MM/dd/yyyy or dd/MM/yyyy (common variations)
-  const parts_slash = dateString.split('/');
-  if (parts_slash.length === 3) {
-    let part1 = parts_slash[0];
-    let part2 = parts_slash[1];
-    let year = parts_slash[2];
-
-    if (!isNaN(part1) && !isNaN(part2) && !isNaN(year) && year.length === 4) {
-      const part1Int = parseInt(part1, 10);
-      const part2Int = parseInt(part2, 10);
-
-      // Try MM/dd/yyyy first (Month is typically <= 12, Day <= 31)
-      if (part1Int >= 1 && part1Int <= 12 && part2Int >= 1 && part2Int <= 31) {
-        let date = new Date(`${year}-${part1}-${part2}`); //yyyy-MM-dd format for Date constructor
-        if (!isNaN(date.getTime())) {
-          const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-          console.log("Output dateString (MM/dd/yyyy parsed):", formattedDate);
-          return formattedDate;
-        }
-      }
-
-      // If MM/dd/yyyy failed or was invalid, try dd/MM/yyyy
-      if (part2Int >= 1 && part2Int <= 12 && part1Int >= 1 && part1Int <= 31) {
-        let date = new Date(`${year}-${part2}-${part1}`); //yyyy-MM-dd format for Date constructor
-        if (!isNaN(date.getTime())) {
-          const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-          console.log("Output dateString (dd/MM/yyyy parsed):", formattedDate);
-          return formattedDate;
-        }
-      }
-    }
+  if (file.size > 500 * 1024 * 1024) { // 500MB
+    errorMessage.value = 'File size exceeds the limit of 500MB.';
+     // Reset other state variables
+    fileName.value = '';
+    tableData.value = [];
+    columns.value = [];
+    mappedObjects.value = [];
+    total_record = 0;
+    file_id = 0;
+    rejectedRows.value = [];
+    acceptedRows.value = [];
+    dataToSendToApi.value = [];
+    validationErrors.value = [];
+    return;
   }
 
-
-  console.log("Output dateString (invalid format):", null);
-  return null; // Indicate invalid format
-};
-
-
-const handleSelectionChange = (val) => {
-  multipleSelection.value = val;
-};
-
-const createMappedObjects = (headers, data) => {
-  const mapped = [];
-  data.forEach((row, index) => {
-    const obj = {};
-    headers.forEach((header) => {
-      const mappedKey = headingMap[header.toLowerCase().trim()];
-      if (mappedKey) {
-        obj[mappedKey] = row[header];
-      }
-    });
-    obj._originalIndex = index;
-    mapped.push(obj);
-  });
-  return mapped;
-};
-
-const formatValidationErrorMessage = (errors) => {
-  if (errors.length === 0) return "";
-
-  let message = "The following entries have validation errors:<br>";
-  const acceptedFormats = "'dd-MM-yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy', or 'dd/MM/yyyy'";
-
-  const errorsByRowIndex = {};
-  errors.forEach(err => {
-    if (!errorsByRowIndex[err.rowIndex]) {
-      errorsByRowIndex[err.rowIndex] = [];
-    }
-    errorsByRowIndex[err.rowIndex].push(err);
-  });
-
-  const sortedRowIndices = Object.keys(errorsByRowIndex).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-
-  sortedRowIndices.forEach(rowIndex => {
-    const rowErrors = errorsByRowIndex[rowIndex];
-    message += `<br>Row ${parseInt(rowIndex) + 1}:<br>`;
-    rowErrors.forEach(err => {
-      const originalColumnName = Object.keys(headingMap).find(key => headingMap[key] === err.columnName);
-      const displayColumnName = originalColumnName || err.columnName;
-
-      if (err.columnName === "consignment_id") {
-        message += `- Invalid '${displayColumnName}' value: "${err.value}". Must be a number.<br>`;
-      } else if (err.columnName.includes("_date")) {
-        message += `- Invalid '${displayColumnName}' date value: "${err.value}". Expected formats: ${acceptedFormats}.<br>`;
-      } else {
-        message += `- Invalid value for '${displayColumnName}': "${err.value}".<br>`;
-      }
-    });
-  });
-
-  return message;
-};
-
-const handleFileChange = (uploadFile) => {
+   // Clear previous state
   errorMessage.value = null;
   tableData.value = [];
   columns.value = [];
@@ -336,16 +267,11 @@ const handleFileChange = (uploadFile) => {
   apiErrorMessage.value = null;
   dataToSendToApi.value = [];
   validationErrors.value = [];
-
   file_id = 0;
   total_record = 0;
 
-  if (!uploadFile.raw) {
-    errorMessage.value = 'File is not properly loaded.';
-    return;
-  }
 
-  fileName.value = uploadFile.name;
+  fileName.value = file.name;
   const reader = new FileReader();
 
   reader.onload = (event) => {
@@ -365,7 +291,7 @@ const handleFileChange = (uploadFile) => {
             columns.value = [];
             mappedObjects.value = [];
             total_record = 0;
-            fileName.value = '';
+            //fileName.value = ''; // Keep file name to show the file was selected but invalid
             return;
           }
 
@@ -399,8 +325,7 @@ const handleFileChange = (uploadFile) => {
             columns.value = [];
             mappedObjects.value = [];
             total_record = 0;
-            fileName.value = '';
-
+             // Keep file name to show the file was selected but invalid
           }
 
         } else {
@@ -410,7 +335,7 @@ const handleFileChange = (uploadFile) => {
           total_record = 0;
           console.log("CSV file is empty or contains no data rows.");
           errorMessage.value = "CSV file is empty or contains no data rows.";
-          fileName.value = ''; 
+           // Keep file name to show the file was selected but empty
         }
       },
       error: (error) => {
@@ -420,7 +345,7 @@ const handleFileChange = (uploadFile) => {
         tableData.value = [];
         columns.value = [];
         total_record = 0;
-        fileName.value = ''; 
+         // Keep file name to show the file was selected but errored
       },
     });
   };
@@ -432,10 +357,229 @@ const handleFileChange = (uploadFile) => {
     tableData.value = [];
     columns.value = [];
     total_record = 0;
-    fileName.value = ''; 
+     // Keep file name to show the file was selected but errored
   };
 
-  reader.readAsText(uploadFile.raw);
+  reader.readAsText(file);
+};
+
+
+// Modify handleFileChange to use the new processFiles function
+const handleFileChange = (uploadFile) => {
+    // el-upload gives an object with a `raw` property containing the File object
+    if (uploadFile && uploadFile.raw) {
+      processFiles(uploadFile.raw);
+    } else {
+      errorMessage.value = 'File is not properly loaded from upload input.';
+       // Reset other state variables
+      fileName.value = '';
+      tableData.value = [];
+      columns.value = [];
+      mappedObjects.value = [];
+      total_record = 0;
+      file_id = 0;
+      rejectedRows.value = [];
+      acceptedRows.value = [];
+      dataToSendToApi.value = [];
+      validationErrors.value = [];
+    }
+};
+
+
+const triggerFileUpload = () => {
+  // This finds the hidden file input created by el-upload and clicks it.
+  // It does NOT handle the drag/drop area click directly anymore,
+  // as the drag/drop area has its own @click handler that calls triggerFileUpload.
+  if (uploadRef.value) {
+    // Ensure uploadRef.value exists and has the correct structure
+    const fileInput = uploadRef.value.$el?.querySelector('input[type="file"]') || uploadRef.value.$refs.input?.$el?.querySelector('input[type="file"]');
+    if (fileInput) {
+      fileInput.click();
+    } else {
+      console.error("File input element not found on uploadRef. Cannot trigger file upload.");
+      // Fallback attempt (less reliable as depends on DOM structure)
+      const fallbackInput = document.querySelector('.upload-demo input[type="file"]');
+       if (fallbackInput) {
+         fallbackInput.click();
+       } else {
+         console.error("Fallback file input element also not found.");
+         errorMessage.value = "Unable to open file selection dialog.";
+       }
+    }
+  } else {
+      console.error("uploadRef is not available.");
+      errorMessage.value = "Upload component not initialized correctly.";
+  }
+};
+
+
+const formatDate = (dateString) => {
+  console.log("Input dateString:", dateString);
+  if (!dateString) {
+    console.log("Output dateString (empty):", "");
+    return null; // Return null for empty or null input
+  }
+
+  // Add trim() to handle potential whitespace
+  const trimmedDateString = dateString.trim();
+  console.log("Trimmed dateString:", trimmedDateString);
+
+  // Check for empty string after trimming
+  if (trimmedDateString === '') {
+      console.log("Output dateString (trimmed empty):", null);
+      return null; // Return null for empty string input
+  }
+
+
+  // Attempt dd-MM-yyyy
+  const parts_dmy = trimmedDateString.split('-');
+  if (parts_dmy.length === 3) {
+    const day = parts_dmy[0];
+    const month = parts_dmy[1];
+    const year = parts_dmy[2];
+    // Check if parts are valid numbers and year is likely a year
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year) && year.length === 4) {
+      // Basic check for plausible month/day ranges (optional but helps filter garbage)
+      const dayInt = parseInt(day, 10);
+      const monthInt = parseInt(month, 10);
+      if (dayInt >= 1 && dayInt <= 31 && monthInt >= 1 && monthInt <= 12) {
+        const formattedDate = `${year}-${month}-${day}`; // Format toyyyy-MM-dd
+        console.log("Output dateString (dd-MM-yyyy parsed):", formattedDate);
+        return formattedDate;
+      }
+    }
+  }
+
+  // Attempt yyyy-MM-dd (standard format Date can often parse directly)
+  try {
+    const date = new Date(trimmedDateString);
+    // Check if Date object is valid and represents the input string reasonably
+    // This is a basic check; for strict validation, regex or a date library is better.
+    // Simple check: Does parsing and reformatting give the same year?
+     // Also check if the date components match the input components to avoid false positives
+    if (!isNaN(date.getTime())) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const formattedDate = `${year}-${month}-${day}`;
+
+        // Basic check to see if the parsed date components match the input components (for yyyy-MM-dd input)
+        // This helps differentiate yyyy-MM-dd from other formats that Date might incorrectly parse
+        const parts_ymd_check = trimmedDateString.split('-');
+        if (parts_ymd_check.length === 3 &&
+            parseInt(parts_ymd_check[0], 10) === year &&
+            parseInt(parts_ymd_check[1], 10) === parseInt(month, 10) &&
+            parseInt(parts_ymd_check[2], 10) === parseInt(day, 10)) {
+             console.log("Output dateString (yyyy-MM-dd parsed by Date object):", formattedDate);
+             return formattedDate;
+        }
+    }
+  } catch (error) {
+    console.log("Error parsing date with Date object:", trimmedDateString, error);
+  }
+
+  // Attempt MM/dd/yyyy or dd/MM/yyyy (common variations)
+  const parts_slash = trimmedDateString.split('/');
+  if (parts_slash.length === 3) {
+    let part1 = parts_slash[0];
+    let part2 = parts_slash[1];
+    let year = parts_slash[2];
+
+    if (!isNaN(part1) && !isNaN(part2) && !isNaN(year) && year.length === 4) {
+      const part1Int = parseInt(part1, 10);
+      const part2Int = parseInt(part2, 10);
+
+      // Try MM/dd/yyyy first (Month is typically <= 12, Day <= 31)
+      if (part1Int >= 1 && part1Int <= 12 && part2Int >= 1 && part2Int <= 31) {
+        let date = new Date(`${year}-${part1}-${part2}`); //yyyy-MM-dd format for Date constructor
+        if (!isNaN(date.getTime())) {
+          const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+          console.log("Output dateString (MM/dd/yyyy parsed):", formattedDate);
+          return formattedDate;
+        }
+      }
+
+      // If MM/dd/yyyy failed or was invalid, try dd/MM/yyyy
+      // Note: This might overlap with MM/dd/yyyy if day and month are both <= 12.
+      // A more robust solution would check for valid dates (e.g., Feb 30th is invalid).
+      // For now, this attempts dd/MM/yyyy if MM/dd/yyyy didn't yield a valid Date object.
+      if (part2Int >= 1 && part2Int <= 12 && part1Int >= 1 && part1Int <= 31) {
+         let date = new Date(`${year}-${part2}-${part1}`); //yyyy-MM-dd format for Date constructor
+         if (!isNaN(date.getTime())) {
+           const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+           console.log("Output dateString (dd/MM/yyyy parsed):", formattedDate);
+           return formattedDate;
+         }
+      }
+    }
+  }
+
+
+  console.log("Output dateString (invalid format):", null);
+  return null; // Indicate invalid format
+};
+
+
+const handleSelectionChange = (val) => {
+  multipleSelection.value = val;
+};
+
+const createMappedObjects = (headers, data) => {
+  const mapped = [];
+  data.forEach((row, index) => {
+    const obj = {};
+    headers.forEach((header) => {
+      const mappedKey = headingMap[header.toLowerCase().trim()];
+      if (mappedKey) {
+        obj[mappedKey] = row[header];
+      }
+    });
+    obj._originalIndex = index; // Store original row index
+    mapped.push(obj);
+  });
+  return mapped;
+};
+
+const formatValidationErrorMessage = (errors) => {
+  if (errors.length === 0) return "";
+
+  let message = "The following entries have validation errors:<br>";
+  const acceptedFormats = "'dd-MM-yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy', or 'dd/MM/yyyy'";
+
+  const errorsByRowIndex = {};
+  errors.forEach(err => {
+    if (!errorsByRowIndex[err.rowIndex]) {
+      errorsByRowIndex[err.rowIndex] = [];
+    }
+    errorsByRowIndex[err.rowIndex].push(err);
+  });
+
+  const sortedRowIndices = Object.keys(errorsByRowIndex).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
+  sortedRowIndices.forEach(rowIndex => {
+    const rowErrors = errorsByRowIndex[rowIndex];
+    message += `<br>Row ${parseInt(rowIndex) + 1}:<br>`; // Display 1-based index
+    rowErrors.forEach(err => {
+      // Find the original header name based on the mapped column name
+      const originalColumnNameEntry = Object.entries(headingMap).find(([key, value]) => value === err.columnName);
+      // Use the original header name if found, otherwise use the mapped name
+      const displayColumnName = originalColumnNameEntry ? originalColumnNameEntry[0] : err.columnName;
+
+
+      if (err.columnName === "consignment_id") {
+        message += `- Invalid '${displayColumnName}' value: "${err.value}". Must be a number.<br>`;
+      } else if (err.columnName.includes("_date")) {
+        // Check if the error is specifically for delivery_date and the value was null/undefined/empty
+        // In this case, the message should be different or not shown if it's optional
+        // For now, keep the message but the validation logic below will prevent adding the error for optional dates
+        message += `- Invalid '${displayColumnName}' date value: "${err.value}". Expected formats: ${acceptedFormats}.<br>`;
+      } else {
+        message += `- Invalid value for '${displayColumnName}': "${err.value}".<br>`;
+      }
+    });
+  });
+
+  return message;
 };
 
 
@@ -499,7 +643,8 @@ const makeApiRequest = async (url, method, headers, body = null) => {
       return data;
     } else {
       console.log("API Response (Success - No JSON or other type):", response.status, response.statusText);
-      return { message: `Operation successful (Status: ${response.status})`, accepted_count: 0, rejected_count: 0 };
+      // Return a default success structure if API returns non-JSON or empty body on success
+      return { message: `Operation successful (Status: ${response.status})`, data: [], accepted_count: 0, rejected_count: 0 };
     }
 
 
@@ -522,57 +667,73 @@ const handleMessageBoxClose = () => {
 
   if (messageBoxPurpose.value === 'validation') {
     console.log("Validation message box closed. Checking if API call is needed.");
+    // After closing validation message, if there's data marked for acceptance, trigger the API call
     if (dataToSendToApi.value && dataToSendToApi.value.length > 0) {
       console.log("Proceeding with API call for accepted data.");
-      validationErrors.value = [];
+      // Clear validation errors only AFTER the potential API call is triggered for accepted data
+      // validationErrors.value = []; // This will be cleared inside triggerAcceptApiCall's finally or success
 
       triggerAcceptApiCall(dataToSendToApi.value);
     } else {
       console.log("No accepted data after validation. API call skipped.");
+      // If no data was accepted after validation (meaning all rows had errors),
+      // the process is effectively finished for this file. Reset.
       resetAfterProcess();
     }
   } else if (messageBoxPurpose.value === 'apiResponse') {
     console.log("API response message box closed.");
+    // API response message box signals the end of the process (either success or final error)
     apiResponseData.value = null;
     apiErrorMessage.value = null;
+    // State should be reset after the API response is shown
+    resetAfterProcess();
   }
 
   messageBoxContent.value = '';
   messageBoxTitle.value = '';
   messageBoxType.value = 'info';
-  messageBoxPurpose.value = null;
+  messageBoxPurpose.value = null; // Reset purpose
+
 };
 
 const triggerAcceptApiCall = async (dataArray) => {
   console.log("Starting API call for accepted data...");
 
+  // These counts and row lists should reflect the *result* of the frontend validation
+  // acceptedRows.value and rejectedRows.value are populated during the acceptAllData validation loop
   const acceptCountValidated = acceptedRows.value.length;
   const rejectCountValidated = rejectedRows.value.length;
 
   const rejectedRowsParam = rejectedRows.value.length > 0
-    ? JSON.stringify(rejectedRows.value.map(index => index))
-    : "0";
+    ? JSON.stringify(rejectedRows.value.map(index => index + 1)) // API likely expects 1-based indexing
+    : "[]"; // Send empty array string if none rejected
   const acceptedRowsParam = acceptedRows.value.length > 0
-    ? JSON.stringify(acceptedRows.value.map(index => index))
-    : "0";
+    ? JSON.stringify(acceptedRows.value.map(index => index + 1)) // API likely expects 1-based indexing
+    : "[]"; // Send empty array string if none accepted
+
 
   const fileType = file_id === 1 ? "Shipment letter" : file_id === 2 ? "Delivered letter" : file_id === 3 ? "Returned letter" : "Invalid file type!";
 
   const params = new URLSearchParams({
     fileName: fileName.value,
-    userId: roleId,
+    userId: roleId, // Assuming roleId is the correct user identifier
     recordCount: total_record,
+    // These counts passed as params might be redundant if the API calculates from the body/row lists,
+    // but matching previous logic. The counts in the response body are the most reliable.
     accept_record_count: acceptCountValidated,
     reject_record_count: rejectCountValidated,
     uploadedBy: uploadedBy,
     fileType: fileType
   });
 
-  if (rejectedRowsParam) params.append('rejectedRows', rejectedRowsParam);
-  if (acceptedRowsParam) params.append('acceptedRows', acceptedRowsParam);
+  // Append row indices only if there are any
+  if (rejectedRows.value.length > 0) params.append('rejectedRows', rejectedRowsParam);
+  if (acceptedRows.value.length > 0) params.append('acceptedRows', acceptedRowsParam);
+
 
   const acceptUrl = `${apiUrl}accept?${params.toString()}`;
   console.log("Accept API URL:", acceptUrl);
+  console.log("Data being sent to Accept API:", dataArray);
 
 
   try {
@@ -583,18 +744,38 @@ const triggerAcceptApiCall = async (dataArray) => {
 
     messageBoxTitle.value = "Upload Result";
     messageBoxType.value = "success";
-    console.log("====> data: ", data.data.length);
+    console.log("====> API Response Data Length: ", data.data ? data.data.length : 0);
 
+    // Use counts from API response if available, otherwise use frontend validated counts
     const apiMessage = data.message || 'Process completed successfully.';
-    const acceptedCount = data.data.length !== undefined ? data.data.length : 0;
-    const rejectedCount = data.data.length !== undefined ? (total_record - data.data.length) : 0;
+    const finalAcceptedCount = data.data !== undefined ? data.data.length : acceptCountValidated;
+    const finalRejectedCount = data.data !== undefined ? (total_record - finalAcceptedCount) : rejectCountValidated;
 
-    messageBoxContent.value = `${apiMessage}<br>Total accepted: ${acceptedCount}<br>Total rejected: ${rejectedCount}`;
 
-    messageBoxPurpose.value = 'apiResponse';
+    // Constructing a more informative message
+    let successMessage = `${apiMessage}<br>`;
+
+    if (validationErrors.value.length > 0) {
+        // If there were validation errors but some data was accepted
+         successMessage += `Some records had validation errors and were not processed.<br>`;
+         successMessage += `accepted: ${finalAcceptedCount} records.<br>`;
+         successMessage += `Total records in file: ${total_record}.`;
+    } else {
+        // If no validation errors or all passed validation
+         successMessage += `accepted: ${finalAcceptedCount} records.<br>`;
+         successMessage += `rejected: ${finalRejectedCount} records.<br>`;
+         successMessage += `Total records in file: ${total_record}.`;
+    }
+
+
+    messageBoxContent.value = successMessage;
+
+    messageBoxPurpose.value = 'apiResponse'; // Indicate this is an API response message
     showMessageBox.value = true;
 
-    resetAfterProcess();
+    // Reset state regardless of whether all data was accepted or some were rejected by API
+    // The message box informs the user of the outcome.
+    // resetAfterProcess(); // Reset happens after message box is closed
 
 
   } catch (error) {
@@ -605,15 +786,18 @@ const triggerAcceptApiCall = async (dataArray) => {
     messageBoxType.value = "error";
     messageBoxContent.value = apiErrorMessage.value;
 
-    messageBoxPurpose.value = 'apiResponse';
+    messageBoxPurpose.value = 'apiResponse'; // Indicate this is an API response message
     showMessageBox.value = true;
+  } finally {
+      // Clear the dataToSendToApi and validation errors after the attempt
+      dataToSendToApi.value = [];
+      validationErrors.value = []; // Clear validation errors here as they've been displayed or processed
   }
-  dataToSendToApi.value = [];
 };
 
 
 const resetAfterProcess = () => {
-  console.log("Resetting state after successful process.");
+  console.log("Resetting state after process.");
   tableData.value = [];
   columns.value = [];
   fileName.value = '';
@@ -647,7 +831,6 @@ const rejectAllData = async () => {
     messageBoxContent.value = "No data or file selected to reject. Please upload a valid CSV file with data.";
     messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
-    isLoading.value = false;
     return;
   }
 
@@ -657,8 +840,7 @@ const rejectAllData = async () => {
     messageBoxContent.value = `Cannot reject invalid file type. Please upload a file with 7, 8, or 16 columns.`;
     messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
-    isLoading.value = false;
-    resetAfterProcess(); // Also reset if the file type is invalid
+    resetAfterProcess(); 
     return;
   }
 
@@ -669,26 +851,25 @@ const rejectAllData = async () => {
   acceptedRows.value = []; // Set accepted rows to empty
   rejectedRows.value = []; // Clear rejected rows first
   for (let i = 0; i < total_record; i++) {
-      // Assuming 1-based indexing for rejectedRows parameter based on your accept logic
-      rejectedRows.value.push(i + 1);
+      // Assuming 0-based indexing is fine internally, will adjust for API param if needed
+      rejectedRows.value.push(i);
   }
 
   const acceptCountToSend = 0; // 0 accepted when rejecting all
   const rejectCountToSend = total_record; // All rows rejected
 
+  // Prepare params for API. Assuming API expects 1-based indexing for row numbers.
   const rejectedRowsParam = rejectedRows.value.length > 0
-    ? JSON.stringify(rejectedRows.value.map(index => index))
-    : "0";
-  const acceptedRowsParam = acceptedRows.value.length > 0
-    ? JSON.stringify(acceptedRows.value.map(index => index))
-    : "0";
+    ? JSON.stringify(rejectedRows.value.map(index => index + 1)) // Convert 0-based to 1-based
+    : "[]"; // Send empty array string if none rejected (though unlikely here)
 
+  // acceptedRowsParam will be "[]" as acceptedRows is empty
 
   const fileType = file_id === 1 ? "Shipment letter" : file_id === 2 ? "Delivered letter" : file_id === 3 ? "Returned letter" : "Invalid file type!";
 
   const params = new URLSearchParams({
     fileName: fileName.value,
-    userId: roleId,
+    userId: roleId, // Assuming roleId is the correct user identifier
     recordCount: total_record,
     accept_record_count: acceptCountToSend,
     reject_record_count: rejectCountToSend,
@@ -696,15 +877,14 @@ const rejectAllData = async () => {
     fileType: fileType
   });
 
-  if (rejectedRowsParam) params.append('rejectedRows', rejectedRowsParam);
-  if (acceptedRowsParam) params.append('acceptedRows', acceptedRowsParam);
+  if (rejectedRows.value.length > 0) params.append('rejectedRows', rejectedRowsParam);
   // No need to append acceptedRowsParam as it will be empty
 
   const rejectUrl = `${apiUrl}reject?${params.toString()}`;
   console.log("Reject URL:", rejectUrl);
 
   try {
-    const data = await makeApiRequest(rejectUrl, "POST", headers); // POST with no body is fine for this endpoint
+    const data = await makeApiRequest(rejectUrl, "POST", headers); 
 
     apiResponseData.value = data;
     apiErrorMessage.value = null;
@@ -713,18 +893,32 @@ const rejectAllData = async () => {
     messageBoxType.value = "success";
     // Display feedback based on the rejection action
     const apiMessage = data.message || `Successfully rejected ${total_record} records.`;
-    messageBoxContent.value = `${apiMessage}<br>Total rejected: ${total_record}<br>Total accepted: 0`;
+     messageBoxContent.value = `${apiMessage}<br>Total rejected: ${total_record}<br>Total accepted: 0<br>Total records in file: ${total_record}.`;
 
 
-    messageBoxPurpose.value = 'apiResponse';
+    messageBoxPurpose.value = 'apiResponse'; 
     showMessageBox.value = true;
-
-    // Reset state after successful process
-    resetAfterProcess();
 
 
   } catch (error) {
     apiResponseData.value = null;
+    if (error && error.status === 401) {
+      messageBoxTitle.value = "Unauthorized";
+      messageBoxType.value = "error";
+      apiErrorMessage.value = "Unauthorized: Your session may have expired or you lack permission. Please log in again.";
+    } else if (error && error.status) {
+      messageBoxType.value = "error";
+      messageBoxTitle.value = "Rejection Failed";
+      apiErrorMessage.value= `Failed to generate the report. Server responded with status ${error.status}: ${error.statusText}.`;
+    } else if (error instanceof TypeError) {
+      messageBoxType.value = "error";
+      messageBoxTitle.value = "Rejection Failed";
+      apiErrorMessage.value = `Network Error: Could not reach the report server. Please check your connection and the server address. (${error.message})`;
+    }
+    else {
+      messageBoxType.value = "error";
+      apiErrorMessage.value = "Failed to generate the report due to an unexpected error.";
+    }
     apiErrorMessage.value = error.message || 'An unknown error occurred during rejection.';
 
     messageBoxTitle.value = "Rejection Failed";
@@ -735,12 +929,15 @@ const rejectAllData = async () => {
     showMessageBox.value = true;
   } finally {
       isLoading.value = false; // Ensure loading is turned off
+      // Reset state after the API response (success or failure)
+      // resetAfterProcess(); // Reset happens after message box is closed
   }
 };
 
 
 const acceptAllData = async () => {
   errorMessage.value = null;
+  // Clear previous state related to validation/acceptance
   rejectedRows.value = [];
   acceptedRows.value = [];
   showMessageBox.value = false;
@@ -755,9 +952,9 @@ const acceptAllData = async () => {
     messageBoxTitle.value = "Info";
     messageBoxType.value = "info";
     messageBoxContent.value = "No data or file selected to accept. Please upload a valid CSV file with data.";
-    messageBoxPurpose.value = 'apiResponse';
+    messageBoxPurpose.value = 'apiResponse'; // Use apiResponse purpose as it's a final status message
     showMessageBox.value = true;
-    isLoading.value = false;
+    // No isLoading = false here
     return;
   }
 
@@ -765,10 +962,10 @@ const acceptAllData = async () => {
     messageBoxTitle.value = "Warning";
     messageBoxType.value = "warning";
     messageBoxContent.value = `Cannot process invalid file type. Please upload a file with 7, 8, or 16 columns.`;
-    messageBoxPurpose.value = 'apiResponse';
+    messageBoxPurpose.value = 'apiResponse'; // Use apiResponse purpose as it's a final status message
     showMessageBox.value = true;
-    isLoading.value = false;
-    resetAfterProcess();
+     // No isLoading = false here
+    resetAfterProcess(); // Reset state as file type is invalid
     return;
   }
 
@@ -783,198 +980,133 @@ const acceptAllData = async () => {
 
   for (let i = 0; i < recordsToProcess.length; i++) {
     const originalRow = recordsToProcess[i];
+    // Create a copy to modify for API, leaving original mappedObjects untouched
     const formattedObj = { ...originalRow };
-    let rowIsValid = true;
+    let rowIsValid = true; // Assume valid until an error is found
 
-    console.log(`--- Processing Row ${i + 1} ---`);
+    console.log(`--- Processing Row ${i + 1} ---`); // Log 1-based index for user
     console.log("Original Row Data (from mappedObjects):", originalRow);
 
+    // Validate consignment_id (must be a number) - Required for all file types
     const consignmentIdKey = headingMap["consignment number"];
     if (consignmentIdKey) {
       const rawConsignmentValue = originalRow[consignmentIdKey];
-      if (rawConsignmentValue == null || String(rawConsignmentValue).trim() === "") {
-        console.log(`Row ${i + 1}: ${consignmentIdKey} is missing or empty (Mandatory).`);
-        currentValidationErrors.push({ rowIndex: i, columnName: consignmentIdKey, value: rawConsignmentValue || '' });
-        formattedObj[consignmentIdKey] = null;
-        rowIsValid = false;
+      // Check if value is null, undefined, empty string, or not a number
+      if (rawConsignmentValue === null || rawConsignmentValue === undefined || rawConsignmentValue.toString().trim() === '' || isNaN(rawConsignmentValue)) {
+         rowIsValid = false;
+         currentValidationErrors.push({
+           rowIndex: i,
+           columnName: consignmentIdKey,
+           value: rawConsignmentValue,
+           message: "Invalid consignment ID. Must be a number."
+         });
       } else {
-        const parsedConsignmentId = parseInt(rawConsignmentValue, 10);
-        if (isNaN(parsedConsignmentId)) {
-          console.log(`Row ${i + 1}: ${consignmentIdKey} '${rawConsignmentValue}' is not a number.`);
-          currentValidationErrors.push({ rowIndex: i, columnName: consignmentIdKey, value: rawConsignmentValue });
-          formattedObj[consignmentIdKey] = null;
-          rowIsValid = false;
-        } else {
-          formattedObj[consignmentIdKey] = parsedConsignmentId;
-          console.log(`Row ${i + 1}: Parsed ${consignmentIdKey}: ${formattedObj[consignmentIdKey]}`);
-        }
-      }
-    } else {
-      console.log(`Row ${i + 1}: 'consignment number' column missing from file.`);
-      currentValidationErrors.push({ rowIndex: i, columnName: 'consignment_id', value: 'Column Missing' });
-      formattedObj['consignment_id'] = null;
-      rowIsValid = false;
-    }
-
-    if (file_id === 1) {
-      const bookingDateKey = headingMap["booking date"];
-      const cardCreationDateKey = headingMap["card creation date"];
-
-      if (bookingDateKey) {
-        const rawBookingDate = originalRow[bookingDateKey];
-        if (rawBookingDate == null || String(rawBookingDate).trim() === "") {
-          console.log(`Row ${i + 1}: ${bookingDateKey} is missing or empty (Mandatory for Shipment).`);
-          currentValidationErrors.push({ rowIndex: i, columnName: bookingDateKey, value: rawBookingDate || '' });
-          formattedObj[bookingDateKey] = null;
-          rowIsValid = false;
-        } else {
-          const bookingDateFormatted = formatDate(rawBookingDate);
-          if (bookingDateFormatted === null) {
-            console.log(`Row ${i + 1}: ${bookingDateKey} '${rawBookingDate}' is an invalid format.`);
-            currentValidationErrors.push({ rowIndex: i, columnName: bookingDateKey, value: rawBookingDate });
-            rowIsValid = false;
-          }
-          formattedObj[bookingDateKey] = bookingDateFormatted;
-        }
-      } else {
-        console.log(`Row ${i + 1}: 'booking date' column missing from Shipment file.`);
-        currentValidationErrors.push({ rowIndex: i, columnName: 'booking_date', value: 'Column Missing' });
-        formattedObj['booking_date'] = null;
-        rowIsValid = false;
-      }
-
-      if (cardCreationDateKey) {
-        const rawCardCreationDate = originalRow[cardCreationDateKey];
-        if (rawCardCreationDate == null || String(rawCardCreationDate).trim() === "") {
-          console.log(`Row ${i + 1}: ${cardCreationDateKey} is missing or empty (Mandatory for Shipment).`);
-          currentValidationErrors.push({ rowIndex: i, columnName: cardCreationDateKey, value: rawCardCreationDate || '' });
-          formattedObj[cardCreationDateKey] = null;
-          rowIsValid = false;
-        } else {
-          const cardCreationDateFormatted = formatDate(rawCardCreationDate);
-          if (cardCreationDateFormatted === null) {
-            console.log(`Row ${i + 1}: ${cardCreationDateKey} '${rawCardCreationDate}' is an invalid format.`);
-            currentValidationErrors.push({ rowIndex: i, columnName: cardCreationDateKey, value: rawCardCreationDate });
-            rowIsValid = false;
-          }
-          formattedObj[cardCreationDateKey] = cardCreationDateFormatted;
-        }
-      } else {
-        console.log(`Row ${i + 1}: 'card creation date' column missing from Shipment file.`);
-        currentValidationErrors.push({ rowIndex: i, columnName: 'card_creation_date', value: 'Column Missing' });
-        formattedObj['card_creation_date'] = null;
-        rowIsValid = false;
-      }
-
-
-    } else if (file_id === 2) {
-      const deliveryDateKey = headingMap["delivery date"];
-
-      if (deliveryDateKey) {
-        const rawDeliveryDate = originalRow[deliveryDateKey];
-        if (rawDeliveryDate == null || String(rawDeliveryDate).trim() === "") {
-          console.log(`Row ${i + 1}: ${deliveryDateKey} is missing or empty (Mandatory for Delivered).`);
-          currentValidationErrors.push({ rowIndex: i, columnName: deliveryDateKey, value: rawDeliveryDate || '' });
-          formattedObj[deliveryDateKey] = null;
-          rowIsValid = false;
-        } else {
-          const deliveryDateFormatted = formatDate(rawDeliveryDate);
-          if (deliveryDateFormatted === null) {
-            console.log(`Row ${i + 1}: ${deliveryDateKey} '${rawDeliveryDate}' is an invalid format.`);
-            currentValidationErrors.push({ rowIndex: i, columnName: deliveryDateKey, value: rawDeliveryDate });
-            rowIsValid = false;
-          }
-          formattedObj[deliveryDateKey] = deliveryDateFormatted;
-        }
-      } else {
-        console.log(`Row ${i + 1}: 'delivery date' column missing from Delivered file.`);
-        currentValidationErrors.push({ rowIndex: i, columnName: 'delivery_date', value: 'Column Missing' });
-        formattedObj['delivery_date'] = null;
-        rowIsValid = false;
-      }
-
-    } else if (file_id === 3) {
-      const returnDateKey = headingMap["date of return shipment received at branch"];
-
-      if (returnDateKey) {
-        const rawReturnDate = originalRow[returnDateKey];
-        if (rawReturnDate == null || String(rawReturnDate).trim() === "") {
-          console.log(`Row ${i + 1}: ${returnDateKey} is missing or empty (Mandatory for Returned).`);
-          currentValidationErrors.push({ rowIndex: i, columnName: returnDateKey, value: rawReturnDate || '' });
-          formattedObj[returnDateKey] = null;
-          rowIsValid = false;
-        } else {
-          const returnDateFormatted = formatDate(rawReturnDate);
-          if (returnDateFormatted === null) {
-            console.log(`Row ${i + 1}: ${returnDateKey} '${rawReturnDate}' is an invalid format.`);
-            currentValidationErrors.push({ rowIndex: i, columnName: returnDateKey, value: rawReturnDate });
-            rowIsValid = false;
-          }
-          formattedObj[returnDateKey] = returnDateFormatted;
-        }
-      } else {
-        console.log(`Row ${i + 1}: 'date of return shipment received at branch' column missing from Returned file.`);
-        currentValidationErrors.push({ rowIndex: i, columnName: 'return_date', value: 'Column Missing' });
-        formattedObj['return_date'] = null;
-        rowIsValid = false;
+         // Convert to number for consistency if needed, or keep as string if API expects string
+         // For now, keeping as string as per original data, validation is just for format
+         // formattedObj[consignmentIdKey] = parseInt(rawConsignmentValue, 10); // Example if API needs number
       }
     }
 
+    // Determine which date fields to validate based on file_id
+    let dateFieldsToValidate = [];
+    let optionalDateFields = []; // Keep track of dates that are allowed to be empty/null
 
-    console.log(`Row ${i + 1} - Final rowIsValid status: ${rowIsValid}`);
-    console.log(`Row ${i + 1} - Formatted Object:`, formattedObj);
+    if (file_id === 1) { // Shipment letter
+        dateFieldsToValidate = [
+            headingMap["booking date"],
+            headingMap["card creation date"]
+        ].filter(key => key !== undefined);
+    } else if (file_id === 2) { // Delivered letter
+        dateFieldsToValidate = [
+            headingMap["delivery date"]
+        ].filter(key => key !== undefined);
+        optionalDateFields.push(headingMap["delivery date"]); 
+    } else if (file_id === 3) { 
+         dateFieldsToValidate = [
+            headingMap["date of return shipment received at branch"]
+         ].filter(key => key !== undefined);
+         optionalDateFields.push(headingMap["date of return shipment received at branch"]); 
+    }
+
+    // Validate the determined date fields
+    dateFieldsToValidate.forEach(dateKey => {
+        if (dateKey) { // Ensure the mapped key exists
+            const rawDate = originalRow[dateKey];
+            const formattedDate = formatDate(rawDate);
+            console.log(`Row ${i + 1}: Raw ${dateKey}: "${rawDate}", Formatted: "${formattedDate}"`); // Added detailed log
+
+            // Check if the formatted date is null AND if this date field is *not* in the optional list
+            if (formattedDate === null && !optionalDateFields.includes(dateKey)) {
+                // This date field is required and invalid
+                rowIsValid = false; // Mark the row as invalid
+                currentValidationErrors.push({
+                    rowIndex: i,
+                    columnName: dateKey,
+                    value: rawDate,
+                    message: "Invalid date format"
+                });
+                 formattedObj[dateKey] = null; // Set to null for API if invalid
+            } else {
+                 // Date was formatted successfully OR it was an optional date field and was null/empty
+                 formattedObj[dateKey] = formattedDate; // Use the formatted date (yyyy-MM-dd) or null
+            }
+        }
+    });
+
+
 
     if (rowIsValid) {
       currentAcceptedDataForApi.push(formattedObj);
-      currentAcceptedRowsIndices.push(originalRow._originalIndex + 1);
-      console.log(`Row ${i + 1} added to accepted data.`);
+      currentAcceptedRowsIndices.push(i);
     } else {
-      currentRejectedRowsIndices.push(originalRow._originalIndex + 1);
-      console.log(`Row ${i + 1} added to rejected rows list.`);
+      currentRejectedRowsIndices.push(i);
     }
-    console.log(`--- Finished Row ${i + 1} ---`);
   }
 
-  isLoading.value = false;
+  console.log("Frontend validation complete.");
+  console.log("Validation Errors:", currentValidationErrors);
+  console.log("Accepted Rows Indices:", currentAcceptedRowsIndices);
+  console.log("Rejected Rows Indices:", currentRejectedRowsIndices);
+  console.log("Data to Send to API (Accepted):", currentAcceptedDataForApi);
 
-  console.log("Data validation loop finished.");
-  console.log("Total Validation Errors collected:", currentValidationErrors.length);
-  console.log("Accepted Data Count (for API):", currentAcceptedDataForApi.length);
-  console.log("Rejected Row Indices Count (local):", currentRejectedRowsIndices.length);
-  console.log("Accepted Row Indices:", currentAcceptedRowsIndices);
-  console.log("Rejected Row Indices:", currentAcceptedRowsIndices);
 
   validationErrors.value = currentValidationErrors;
-  dataToSendToApi.value = currentAcceptedDataForApi;
   rejectedRows.value = currentRejectedRowsIndices;
   acceptedRows.value = currentAcceptedRowsIndices;
+  dataToSendToApi.value = currentAcceptedDataForApi; // Store data for API call
 
+  isLoading.value = false; // Turn off loading after frontend validation
 
   if (validationErrors.value.length > 0) {
-    messageBoxTitle.value = "Validation Warnings";
+    // Show validation errors message box
+    messageBoxTitle.value = "Validation Errors Found";
     messageBoxType.value = "warning";
     messageBoxContent.value = formatValidationErrorMessage(validationErrors.value);
-    messageBoxPurpose.value = 'validation';
+    messageBoxPurpose.value = 'validation'; // Indicate this is a validation message
     showMessageBox.value = true;
 
+    // The API call for accepted data will be triggered when this message box is closed
   } else {
+    // If no validation errors, proceed directly to API call
+    console.log("No validation errors. Proceeding directly to API call.");
     triggerAcceptApiCall(dataToSendToApi.value);
   }
-
 };
-
 
 </script>
 
+
 <style scoped>
-.buttons-container{
+.buttons-container {
   display: flex;
 }
+
 .p-datatable .p-datatable-tbody>tr>td {
   border: 1px solid #a9a9a9 !important;
   border-width: 0 0 1px 1px !important;
 }
-.p-datatable{
+
+.p-datatable {
   padding: 8px;
   background-color: rgb(162, 200, 168);
   border: 2px solid white;
@@ -1310,7 +1442,7 @@ const acceptAllData = async () => {
   flex-wrap: wrap;
   justify-content: center;
   gap: 15px;
-    width: 100%;
+  width: 100%;
 }
 
 .action-buttons .el-button {
@@ -1694,7 +1826,7 @@ button {
   }
 
   .el-message-box__container {
-    max-height: calc(80vh - 120px);
+    /* max-height: calc(80vh - 120px); */
     /* Revert calculation */
     padding-right: 10px;
   }

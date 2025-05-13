@@ -1,81 +1,85 @@
 <template>
-    <div v-if="visible" class="el-overlay is-message-box" style="z-index: 2006;">
-      <div class="el-overlay-message-box">
-        <div role="dialog" aria-label="Message" aria-modal="true" class="el-message-box is-draggable">
-          <div class="el-message-box__header">
-            <div class="el-message-box__title">
-              <span class="msg-text">{{ title }}</span>
-            </div>
+  <div v-if="visible" class="el-overlay is-message-box" style="z-index: 2006;">
+    <div class="el-overlay-message-box">
+      <div role="dialog" aria-label="Message" aria-modal="true" class="el-message-box is-draggable">
+        <div class="el-message-box__header">
+          <div class="el-message-box__title">
+            <span class="msg-text">{{ title }}</span>
           </div>
-          <div class="el-message-box__content">
-            <div class="el-message-box__container">
-              <p v-html="content" class="p-text"></p>
-            </div>
-            <div class="el-message-box__input" style="display: none;">
-              <div class="el-input"><input class="el-input__inner" type="text" autocomplete="off" placeholder=""></div>
-              <div class="el-message-box__errormsg" style="visibility: hidden;"></div>
-            </div>
+        </div>
+        <div class="el-message-box__content">
+          <div class="el-message-box__container">
+            <p v-html="content" class="p-text"></p>
           </div>
-          <div class="el-message-box__btns">
-            <button @click="$emit('close')" class="el-button" type="button">
-              <span class="">OK</span>
-            </button>
+          <div class="el-message-box__input" style="display: none;">
+            <div class="el-input"><input class="el-input__inner" type="text" autocomplete="off" placeholder=""></div>
+            <div class="el-message-box__errormsg" style="visibility: hidden;"></div>
           </div>
+        </div>
+        <div class="el-message-box__btns">
+          <button @click="$emit('close')" class="el-button" type="button">
+            <span class="">OK</span>
+          </button>
         </div>
       </div>
     </div>
-  </template>
-  
-  <script setup>
-  import { defineProps, defineEmits } from 'vue';
-  
-  // Define the props that this component accepts
-  const props = defineProps({
-    visible: {
-      type: Boolean,
-      required: true,
-    },
-    title: {
-      type: String,
-      default: 'Message', // Default title
-    },
-    content: {
-      type: String,
-      default: '', // Default empty content
-    },
-    type: {
-      type: String,
-      default: 'info', // 'info', 'success', 'warning', 'error' - useful for styling later
-    }
-  });
-  
-  // Define the events this component can emit
-  const emit = defineEmits(['close']);
-  </script>
-  <style>
+  </div>
+</template>
 
+<script setup>
+import { defineProps, defineEmits } from 'vue';
+
+// Define the props that this component accepts
+const props = defineProps({
+  visible: {
+    type: Boolean,
+    required: true,
+  },
+  title: {
+    type: String,
+    default: 'Message', // Default title
+  },
+  content: {
+    type: String,
+    default: '', // Default empty content
+  },
+  type: {
+    type: String,
+    default: 'info', // 'info', 'success', 'warning', 'error' - useful for styling later
+  }
+});
+
+// Define the events this component can emit
+const emit = defineEmits(['close']);
+</script>
+<style>
 .el-overlay.is-message-box {
-  display: flex; /* Use flexbox to center the message box */
-  align-items: center; /* Center vertically */
+  display: flex;
+  /* Use flexbox to center the message box */
+  align-items: center;
+  /* Center vertically */
   justify-content: center;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5); /* Add a backdrop */
+  background-color: rgba(0, 0, 0, 0.5);
+  /* Add a backdrop */
   z-index: 2006;
 }
 
 .el-message-box {
-  width: 90%; /* Use percentage for width */
-  max-width: 500px; /* Set a max-width for larger screens */
+  width: 90%;
+  /* Use percentage for width */
+  max-width: 500px;
+  /* Set a max-width for larger screens */
   /* Removed top, left, and transform as flexbox handles centering */
   background-color: #ffffff;
-  max-height: 80vh;
   overflow: hidden;
   border-radius: 4px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.08);
-  flex-direction: column; /* Stack header, content, and buttons vertically */
+  flex-direction: column;
+  /* Stack header, content, and buttons vertically */
 }
 
 .el-message-box__header {
@@ -87,7 +91,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-shrink: 0; /* Prevent header from shrinking */
+  flex-shrink: 0;
+  /* Prevent header from shrinking */
 }
 
 .el-message-box__title {
@@ -109,13 +114,15 @@
   color: #333;
   font-size: 14px;
   overflow: hidden;
-  flex-grow: 1; /* Allow content to take available space */
+  flex-grow: 1;
+  /* Allow content to take available space */
   display: flex;
   flex-direction: column;
 }
 
 .el-message-box__container {
-  max-height: calc(80vh - 100px); /* Adjusted calculation */
+  max-height: calc(80vh - 100px);
+  /* Adjusted calculation */
   overflow-y: auto;
   padding-right: 5px;
   box-sizing: border-box;
@@ -152,7 +159,8 @@
   justify-content: flex-end;
   padding: 10px 15px 10px 0;
   border-top: 1px solid #f4f4f4;
-  flex-shrink: 0; /* Prevent buttons from shrinking */
+  flex-shrink: 0;
+  /* Prevent buttons from shrinking */
 }
 
 .el-message-box__btns .el-button {
@@ -215,26 +223,33 @@ button {
   .tablecsv {
     margin-top: 20px;
     overflow-x: visible;
-    max-height: none; /* Remove max-height on larger screens */
-    overflow-y: visible; /* Remove vertical scrolling on larger screens */
+    max-height: none;
+    /* Remove max-height on larger screens */
+    overflow-y: visible;
+    /* Remove vertical scrolling on larger screens */
   }
 
   .el-table td.el-table__cell,
   .el-table th.el-table__cell {
-    padding: 12px 15px; /* Revert/Adjust padding for larger screens */
+    padding: 12px 15px;
+    /* Revert/Adjust padding for larger screens */
   }
 
   .el-table td.el-table__cell {
-      white-space: normal; /* Ensure text wraps */
-      word-break: break-word; /* Break long words if necessary */
+    white-space: normal;
+    /* Ensure text wraps */
+    word-break: break-word;
+    /* Break long words if necessary */
   }
 
   .el-table__header-wrapper th.el-table__cell {
-    text-align: center; /* Center header text on larger screens */
-    padding: 12px 15px; /* Revert/Adjust padding for larger screens */
+    text-align: center;
+    /* Center header text on larger screens */
+    padding: 12px 15px;
+    /* Revert/Adjust padding for larger screens */
   }
 
-  .tablecsv + div {
+  .tablecsv+div {
     margin-top: 20px !important;
     justify-content: flex-start;
     flex-wrap: nowrap;
@@ -246,13 +261,16 @@ button {
   }
 
   .el-overlay.is-message-box {
-     /* Flexbox centering remains active */
-     background-color: rgba(0, 0, 0, 0.5); /* Keep backdrop */
+    /* Flexbox centering remains active */
+    background-color: rgba(0, 0, 0, 0.5);
+    /* Keep backdrop */
   }
 
   .el-message-box {
-    width: 500px; /* Revert to fixed width or adjust max-width */
-    max-width: none; /* Remove max-width */
+    width: 500px;
+    /* Revert to fixed width or adjust max-width */
+    max-width: none;
+    /* Remove max-width */
     /* Remove top, left, transform */
   }
 
@@ -269,7 +287,8 @@ button {
   }
 
   .el-message-box__container {
-    max-height: calc(80vh - 120px); /* Revert calculation */
+    max-height: calc(80vh - 120px);
+    /* Revert calculation */
     padding-right: 10px;
   }
 
@@ -282,4 +301,4 @@ button {
     padding: 15px 24px 15px 0;
   }
 }
-  </style>
+</style>

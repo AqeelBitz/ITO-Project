@@ -149,15 +149,7 @@ app.post('/fsm/consignments/reject', async (req, res) => {
   const uploadedBy = req.query.uploadedBy;
   const fileType = req.query.fileType;
   const authToken = req.headers.authorization;
-  // console.log("AuthToken: ",AuthToken.authorization)
-  // console.log("Header: ",AuthToken)
   console.log("params: ", req.query);
-
-  // console.log("----> request body: ", req.body);
-  // const allConsginment = req.body;
-
-  // listofConsign = allConsginment.map()
-  // console.log("------> consignmentid_Type: ",typeof(allConsginment[0].consignment_id));
   console.log("------> recordCount type: ",typeof(recordCount));
   console.log("------> userId type: ",typeof(userId));
 
@@ -199,17 +191,35 @@ app.post('/fsm/consignments/reject', async (req, res) => {
 
 app.get("/fsm/consignments/search",
   async (req, res) => {
-    const key = Object.keys(req.query)[0];
-    const value = req.query[key];
-    const token = req.headers.authorization;
-    // console.log("token: ", token);
-    // console.log("FSM GET /fsm/search hit with query-name: ", key);
-    // console.log("FSM GET /fsm/search hit with query-name: ", value);
-    // console.log("FSM GET /fsm/search hit with query-value: ", req.query);
-    const reqQuery = { query: req.query }
-    // console.log("req----> ", req);
-    handler(searchMachine, req, res);
-  })
+    const authToken = req.headers.authorization;
+    const queryparams = req.query;
+    console.log("authToken: ",authToken )
+    console.log("req.query: ",req.query )
+    const actor = createActor(searchMachine, {
+      input: {
+        queryparams: queryparams,
+          result: null,
+          error: null,
+          authToken:authToken
+      }
+      
+    });
+  
+    actor.subscribe((state) => {
+      console.log(state.value);
+      if (state.matches('success')) {
+        res.status(200).json(state.context.result);
+        actor.stop();
+      } else if (state.matches('searchFailed')) {
+        console.error("Login Failed - Error:", state.context.error); 
+        res.status(200).json({ error: state.context.error });
+        actor.stop();
+      }
+    });
+  
+    actor.start();
+    actor.send({ type: 'SUBMIT'});
+  });
 
 app.listen(3001, () => {
   console.log('FSM Server running at http://localhost:3001');
