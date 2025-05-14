@@ -13,100 +13,105 @@
           </div>
         </header>
       </div>
-      <div class="main-cotainer">
-        <div class="heading">
-          <h1>Consignment Details</h1>
-        </div>
-        <div class="container">
-          <div class="main-div">
-            <div class="input-container">
-              <el-select v-model="select" class="select-field" placeholder="Select">
-                <el-option label="Consignment Number" value="consignment_id" />
-                <el-option label="Account Number" value="account_no" />
-                <el-option label="Customer's CNIC Number" value="customer_cnic_number" />
-                <el-option label="Address" value="address" />
-                <el-option label="City" value="city" />
-              </el-select>
-              <el-input v-model="input" placeholder="Please input" class="input-field"></el-input>
-              <el-button class="custom-button" @click="searchButton">Search</el-button>
-              <el-button class="custom-button" @click="openReportModal">View History</el-button>
+      <div class="main-main">
+        <div class="main-cotainer">
+          <div class="heading">
+            <h1>Consignment Details</h1>
+          </div>
+          <div class="container">
+            <div class="main-div">
+              <div class="input-container">
+                <el-select v-model="select" class="select-field" placeholder="Select"> 
+                  <el-option label="Consignment Number" value="consignment_id" />
+                  <el-option label="Account Number" value="account_no" />
+                  <el-option label="Customer's CNIC Number" value="customer_cnic_number" />
+                  <el-option label="Address" value="address" />
+                  <el-option label="City" value="city" />
+                </el-select>
+                <el-input v-model="input"  placeholder="Please input" @keyup.enter="searchButton" class="input-field"></el-input>
+                <el-button class="custom-button" @click="searchButton">Search</el-button>
+                <el-button class="custom-button" @click="openReportModal">View History</el-button>
+              </div>
             </div>
-            <div v-if="errorMessage" class="error-message">
-              {{ errorMessage }}
+            <div class="table-container p-datatable" v-if="tableData.length">
+              <div class="table-responsive my-custom-table">
+                <table class="data-table p-datatable-table">
+                  <thead>
+                    <tr>
+                      <th>Sno</th>
+                      <th>Consignment Number</th>
+                      <th>Courier</th>
+                      <th>Booking Date</th>
+                      <th>Account Number</th>
+                      <th>Account Title</th>
+                      <th>Shipping Bill</th>
+                      <th>Address</th>
+                      <th>City</th>
+                      <th>Email</th>
+                      <th>Mobile Number</th>
+                      <th>Letter Type</th>
+                      <th>Card Number</th>
+                      <th>Card Type</th>
+                      <th>Card Creation Date</th>
+                      <th>Return Reason</th>
+                      <th>Return Date</th>
+                      <th>Branch Code</th>
+                      <th>Received By (At Branch)</th>
+                      <th>Delivery Date</th>
+                      <th>Status</th>
+                      <th>Delivered To</th>
+                      <th>Relationship</th>
+                      <th>CNIC Number of Receiver</th>
+                      <th>Card Status</th>
+                      <th>Customer CNIC Number</th>
+                    </tr>
+                  </thead>
+                  <tbody class="p-datatable p-datatable-tbody">
+                    <tr v-for="(item, index) in tableData" :key="item?.consignment_id">
+                      <td>{{ index + 1 }}</td>
+                      <td>{{ item?.consignment_id }}</td>
+                      <td>{{ item?.courier }}</td>
+                      <td>{{ item?.booking_date }}</td>
+                      <td>{{ item?.account_no }}</td>
+                      <td>{{ item?.account_title }}</td>
+                      <td>{{ item?.shipping_bill }}</td>
+                      <td>{{ item?.address }}</td>
+                      <td>{{ item?.city }}</td>
+                      <td>{{ item?.email }}</td>
+                      <td>{{ item?.mobile_no }}</td>
+                      <td>{{ item?.letter_type }}</td>
+                      <td>{{ item?.card_no }}</td>
+                      <td>{{ item?.card_type }}</td>
+                      <td>{{ item?.card_creation_date }}</td>
+                      <td>{{ item?.return_reason }}</td>
+                      <td>{{ item?.return_date }}</td>
+                      <td>{{ item?.branch_cd }}</td>
+                      <td>{{ item?.receiver_name_b }}</td>
+                      <td>{{ item?.delivery_date }}</td>
+                      <td>{{ item?.status }}</td>
+                      <td>{{ item?.receiver_name_d }}</td>
+                      <td>{{ item?.relationship }}</td>
+                      <td>{{ item?.receiver_cnic }}</td>
+                      <td>{{ item?.card_status }}</td>
+                      <td>{{ item?.customer_cnic_number }}</td>
+                    </tr>
+                    <tr v-if="tableData.length === 0">
+                      <td :colspan="26" style="text-align: center;">No Data Available</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-          <div class="table-container p-datatable" v-if="tableData.length">
-            <div class="table-responsive my-custom-table">
-              <table class="data-table p-datatable-table">
-                <thead>
-                  <tr>
-                    <th>Sno</th>
-                    <th>Consignment Number</th>
-                    <th>Courier</th>
-                    <th>Booking Date</th>
-                    <th>Account Number</th>
-                    <th>Account Title</th>
-                    <th>Shipping Bill</th>
-                    <th>Address</th>
-                    <th>City</th>
-                    <th>Email</th>
-                    <th>Mobile Number</th>
-                    <th>Letter Type</th>
-                    <th>Card Number</th>
-                    <th>Card Type</th>
-                    <th>Card Creation Date</th>
-                    <th>Return Reason</th>
-                    <th>Return Date</th>
-                    <th>Branch Code</th>
-                    <th>Received By (At Branch)</th>
-                    <th>Delivery Date</th>
-                    <th>Status</th>
-                    <th>Delivered To</th>
-                    <th>Relationship</th>
-                    <th>CNIC Number of Receiver</th>
-                    <th>Card Status</th>
-                    <th>Customer CNIC Number</th>
-                  </tr>
-                </thead>
-                <tbody class="p-datatable p-datatable-tbody">
-                  <tr v-for="(item, index) in tableData" :key="item.consignment_id">
-                    <td>{{ index + 1 }}</td>
-                    <td>{{ item.consignment_id }}</td>
-                    <td>{{ item.courier }}</td>
-                    <td>{{ item.booking_date }}</td>
-                    <td>{{ item.account_no }}</td>
-                    <td>{{ item.account_title }}</td>
-                    <td>{{ item.shipping_bill }}</td>
-                    <td>{{ item.address }}</td>
-                    <td>{{ item.city }}</td>
-                    <td>{{ item.email }}</td>
-                    <td>{{ item.mobile_no }}</td>
-                    <td>{{ item.letter_type }}</td>
-                    <td>{{ item.card_no }}</td>
-                    <td>{{ item.card_type }}</td>
-                    <td>{{ item.card_creation_date }}</td>
-                    <td>{{ item.return_reason }}</td>
-                    <td>{{ item.return_date }}</td>
-                    <td>{{ item.branch_cd }}</td>
-                    <td>{{ item.receiver_name_b }}</td>
-                    <td>{{ item.delivery_date }}</td>
-                    <td>{{ item.status }}</td>
-                    <td>{{ item.receiver_name_d }}</td>
-                    <td>{{ item.relationship }}</td>
-                    <td>{{ item.receiver_cnic }}</td>
-                    <td>{{ item.card_status }}</td>
-                    <td>{{ item.customer_cnic_number }}</td>
-                  </tr>
-                  <tr v-if="tableData.length === 0">
-                    <td :colspan="26" style="text-align: center;">No Data Available</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+        </div>
+        <div class="back-container">
+          <div class="back-button-container">
+            <button @click="goBack" class="balh-btn back-btn">
+              Back
+            </button>
           </div>
         </div>
       </div>
-
       <el-dialog v-model="reportModalVisible" title="Generate File Upload History Report" width="30%" center
         :close-on-click-modal="false" :close-on-press-escape="false">
         <div class="modal-content">
@@ -124,29 +129,27 @@
         </div>
         <template #footer>
           <span class="dialog-footer">
-            <el-button @click="reportModalVisible = false">Cancel</el-button>
-            <el-button type="primary" @click="viewReport" :loading="isGeneratingReport">
+            <el-button class="cancel-btn" @click="reportModalVisible = false">Cancel</el-button>
+            <el-button class="generate-button" @click="viewReport" :loading="isGeneratingReport">
               {{ isGeneratingReport ? 'Generating...' : 'Generate Report' }}
             </el-button>
           </span>
         </template>
       </el-dialog>
     </div>
-    <div class="back-container">
-      <div class="back-button-container">
-        <button @click="goBack" class="balh-btn back-btn">
-          Back
-        </button>
-      </div>
-    </div>
+
   </div>
+  <MessageBox  :visible="showMessageBox" :title="messageBoxTitle" :content="messageBoxContent"
+    :type="messageBoxType" @close="handleMessageBoxClose" />
 </template>
 
 <script lang="ts" setup>
 import { ref, watch } from 'vue';
 import type { TableInstance } from 'element-plus';
 import { useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus'; // Import ElMessage for notifications
+import { ElMessage } from 'element-plus';
+import MessageBox from './MessageBox.vue';
+
 
 const router = useRouter();
 
@@ -160,6 +163,12 @@ const reportError = ref<string | null>(null);
 const dateErrorMessage = ref<string | null>(null);
 const fromDatePicker = ref<string | null>(null);
 const toDatePicker = ref<string | null>(null);
+const showMessageBox = ref(false);
+const messageBoxContent = ref('');
+const messageBoxTitle = ref('');
+const messageBoxType = ref('info');
+const messageBoxPurpose = ref(null);
+
 
 watch([fromDatePicker, toDatePicker], ([newFromDate, newToDate]) => {
   if (newFromDate && newToDate) {
@@ -175,8 +184,13 @@ watch([fromDatePicker, toDatePicker], ([newFromDate, newToDate]) => {
   }
 });
 
-
-// Function to open the report modal
+const handleMessageBoxClose = () => {
+  showMessageBox.value = false;
+  messageBoxContent.value = '';
+  messageBoxTitle.value = '';
+  messageBoxType.value = 'info';
+  messageBoxPurpose.value = null;
+};
 const openReportModal = () => {
   reportModalVisible.value = true;
   reportError.value = null;
@@ -188,17 +202,17 @@ const viewReport = async () => {
   if (dateErrorMessage.value) {
     return;
   };
-  reportError.value = null; 
+  reportError.value = null;
   if (!fromDatePicker.value || !toDatePicker.value) {
     reportError.value = 'Please select both From and To dates.';
     return;
   }
 
-  isGeneratingReport.value = true; // Start loading state
+  isGeneratingReport.value = true;
 
   try {
-    const authToken = JSON.parse(localStorage.getItem("authResponse")).token;
-    const username = JSON.parse(localStorage.getItem("authResponse")).userName;
+    const authToken = JSON.parse(localStorage.getItem("authResponse"))?.token;
+    const username = JSON.parse(localStorage.getItem("authResponse"))?.userName;
     const design = 'cts_report.rptdesign';
     const format = 'pdf';
     const fromDate = fromDatePicker.value;
@@ -233,19 +247,19 @@ const viewReport = async () => {
           status: response.status,
           statusText: response.statusText,
           message: `HTTP error! Status: ${response.status}`,
-          body: errorBody 
+          body: errorBody
         };
       }
-      isGeneratingReport.value = false; // End loading state
-      return; // Exit the function if there was an error
+      isGeneratingReport.value = false;
+      return;
     }
 
     const reportBlob = await response.blob();
 
-    if (reportBlob.size === 0) {
+    if (reportBlob?.size === 0) {
       reportError.value = "The generated report is empty. Please check the date range.";
-      isGeneratingReport.value = false; // End loading state
-      return; // Exit if the blob is empty
+      isGeneratingReport.value = false;
+      return;
     }
 
 
@@ -258,7 +272,7 @@ const viewReport = async () => {
 
   } catch (error: any) {
     console.error("Error fetching report:", error);
-    isGeneratingReport.value = false; // End loading state
+    isGeneratingReport.value = false;
     if (error && error.status === 401) {
       reportError.value = "Unauthorized: Your session may have expired or you lack permission. Please log in again.";
     } else if (error && error.status) {
@@ -269,13 +283,33 @@ const viewReport = async () => {
     else {
       reportError.value = "Failed to generate the report due to an unexpected error.";
     }
-    ElMessage.error(reportError.value); // Show Element Plus error message
+    ElMessage.error(reportError.value);
   } finally {
-    isGeneratingReport.value = false; // Ensure loading state is turned off
+    isGeneratingReport.value = false;
   }
 }
+const InputValidation = (selectedValue, inputValue) => {
+  if (selectedValue === "consignment_id" || selectedValue === "account_no" || selectedValue === "customer_cnic_number") {
+    if (isNaN(Number(inputValue.trim()))) {
+      return false;
+    }
+  } else if (selectedValue === "address" || selectedValue === "city") {
+    if (!isNaN(Number(inputValue.trim()))) {
+      return false;
+    }
+  }
+  return true; 
+};
 const searchButton = async () => {
-  errorMessage.value = null;
+
+  const isValid = InputValidation(select.value, input.value);
+  if (!isValid) {
+    messageBoxContent.value = "Invalid value entered!";
+    messageBoxTitle.value = 'Invalid Value';
+    messageBoxType.value = 'error';
+    showMessageBox.value = true;
+    return; 
+  }
   if (!select.value || !input.value) {
     errorMessage.value = 'Please select a search criteria and enter a value.';
     tableData.value = [];
@@ -283,7 +317,7 @@ const searchButton = async () => {
   }
 
   let apiUrl = `http://localhost:3001/fsm/consignments/search?${select.value}=${input.value}`;
-  const authToken = JSON.parse(localStorage.getItem("authResponse")).token;
+  const authToken = JSON.parse(localStorage.getItem("authResponse"))?.token;
   console.log("authToken: ", authToken);
   const headers = {
     'accept': '*/*',
@@ -296,24 +330,76 @@ const searchButton = async () => {
     });
     if (!response.ok) {
       const error = await response.json();
-      console.log("res error: ",error);
-      errorMessage.value = error.message || 'Failed to fetch data.';
+      console.log("res error: ", error);
       tableData.value = [];
+      messageBoxContent.value = error.message || 'Failed to fetch data.'
+      messageBoxTitle.value = 'Error';
+      messageBoxType.value = 'error';
+      showMessageBox.value = true;
       return;
     }
     const res = await response.json();
     console.log("res===> ", res);
-    if(res.status===404){
+    if (res?.status === 400) {
       tableData.value = [];
-      errorMessage.value = res.message;
+      messageBoxContent.value = res.message;
+      messageBoxTitle.value = 'Bad Request';
+      messageBoxType.value = 'error';
+      showMessageBox.value = true;
       return
     }
-    const data = res.data;
+    if (res?.status === 401) {
+      tableData.value = [];
+      messageBoxContent.value = res.message;
+      messageBoxTitle.value = 'Unauthorized';
+      messageBoxType.value = 'error';
+      showMessageBox.value = true;
+      return
+    }
+    if (res?.status === 404) {
+      tableData.value = [];
+      messageBoxContent.value = res.message;
+      messageBoxTitle.value = 'Error';
+      messageBoxType.value = 'error';
+      showMessageBox.value = true;
+      return
+    }
+    if (res?.status === 500) {
+      tableData.value = [];
+      messageBoxContent.value = res.message;
+      messageBoxTitle.value = 'Error';
+      messageBoxType.value = 'error';
+      showMessageBox.value = true;
+      return
+    }
+    if (response?.status >= 500 && response?.status < 600) {
+        tableData.value = [];
+      messageBoxContent.value = res.message;
+      messageBoxTitle.value = 'Server Error';
+      messageBoxType.value = 'error';
+      showMessageBox.value = true;
+      return
+      } 
+       if (response.status >= 400 && response.status < 500) {
+        tableData.value = [];
+
+        messageBoxContent.value = res.message;
+      messageBoxTitle.value = 'Client Error';
+      messageBoxType.value = 'error';
+      showMessageBox.value = true;
+      return
+      }
+    const data = res?.data;
     tableData.value = Array.isArray(data) ? data : [data];
   } catch (error: any) {
-    errorMessage.value = error.message || 'An unexpected error occurred.';
+
+    messageBoxContent.value = error.message || 'An unexpected error occurred.';
+    messageBoxTitle.value = 'Error';
+    messageBoxType.value = 'error';
+    showMessageBox.value = true;
+
     tableData.value = [];
-    
+
   }
 };
 
@@ -349,6 +435,22 @@ const multipleTableRef = ref<TableInstance | null>(null);
 </script>
 
 <style scoped>
+
+.generate-button{
+  border-color: rgb(0, 155, 131); 
+  background-color: rgb(0, 155, 131); 
+  font-size: 1em;
+  color: white;
+}
+.generate-button:hover:not(.disabled) {
+  background-color: rgb(0, 155, 131);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+.main-main{
+  max-width: 1500px;
+  margin: 20px auto;
+}
 .back-container {
   padding-left: 5vw;
   display: flex;
@@ -365,9 +467,7 @@ const multipleTableRef = ref<TableInstance | null>(null);
 
 .balh-btn.back-btn:hover:not(.disabled) {
   background-color: #afb9c0;
-  /* Darker grey on hover */
   transform: translateY(-3px);
-  /* Subtle lift for back button */
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
 }
 
@@ -599,7 +699,7 @@ const multipleTableRef = ref<TableInstance | null>(null);
 
 .heading {
   text-align: center;
-  color: #29f98e;
+  color: #d1d6da;
   margin-bottom: 20px;
 }
 
@@ -665,7 +765,7 @@ const multipleTableRef = ref<TableInstance | null>(null);
 
 
 .custom-button {
-  background-color: #00a651;
+  background-color: rgb(0, 155, 131);
   color: var(--balh-white);
   padding: 10px 20px;
   border-radius: 4px;
@@ -680,7 +780,7 @@ const multipleTableRef = ref<TableInstance | null>(null);
 }
 
 .custom-button:hover:not(.disabled) {
-  background-color: #007a3b;
+  background-color: rgb(0, 155, 131);
   transform: translateY(-2px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }

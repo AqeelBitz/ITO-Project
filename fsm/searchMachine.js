@@ -76,6 +76,7 @@ export const searchMachine = setup({
         result: '',
         errorMessage: '',
         error: '',
+        status:'',
     }),
     states: {
         idle: {
@@ -107,7 +108,7 @@ export const searchMachine = setup({
                     {
                         target: 'searchFailed',
                         actions: assign({
-                            error: ({ event }) => event.message //'Search failed',
+                            error: ({ event }) => event.message 
                           })
                     }
                 ],

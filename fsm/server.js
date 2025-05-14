@@ -200,13 +200,14 @@ app.get("/fsm/consignments/search",
         queryparams: queryparams,
           result: null,
           error: null,
+          status:null,
           authToken:authToken
       }
       
     });
   
     actor.subscribe((state) => {
-      console.log(state.value);
+      console.log("status: ",state.value);
       if (state.matches('success')) {
         res.status(200).json(state.context.result);
         actor.stop();

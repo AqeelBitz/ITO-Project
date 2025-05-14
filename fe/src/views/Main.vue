@@ -28,9 +28,6 @@
           </button>
         </div>
         <div class="back-button-container">
-           <button @click="goBack" class="back-btn">
-            Back
-          </button>
           <button @click="handleLogout" class="back-btn">
             Logout
           </button>
@@ -61,13 +58,8 @@ const goToView = () => {
   router.push('/viewer');
 };
 
-const goBack = () => {
-  router.push('/');
-};
-
-// Assuming localStorage item and structure are consistent
 const authResponse = JSON.parse(localStorage.getItem("authResponse"));
-const roleId = authResponse ? authResponse.roleId : null; // Handle potential null
+const roleId = authResponse ? authResponse.roleId : null; 
 </script>
 
 <style scoped>
@@ -262,7 +254,7 @@ const roleId = authResponse ? authResponse.roleId : null; // Handle potential nu
     margin-top: 1rem; /* Space above the back button */
     width: 40%;
     display: flex;
-    justify-content: space-between;
+    justify-content: space-around;
 }
 
 .back-btn {

@@ -18,11 +18,11 @@
                status-icon :rules="rules" label-width="auto" class="login-form-container">
                 <div class="login-form">
                     <div style="display: flex; margin-bottom: 24px; gap: 24px;">
-                        <input :error="branchCodeError" v-model="formData.branchCd" @change="validateBranchCode" @keydown="checkDigits" class="form-control" style="width: 21%;" type="text">
-                        <input :error="usernameError" v-model="formData.username" @change="validateUsername" class="form-control" maxlength="10" style="width: 75%; margin-right: -62px;" type="password">
+                        <input :error="branchCodeError" v-model="formData.branchCd" @change="validateBranchCode" @keyup.enter="handleSubmit" @keydown="checkDigits" class="form-control" style="width: 21%;" type="text">
+                        <input :error="usernameError" v-model="formData.username" @change="validateUsername" @keyup.enter="handleSubmit" class="form-control" maxlength="10" style="width: 75%; margin-right: -62px;" type="password">
                     </div>
                     <div>
-                        <input :error="passwordError" v-model="formData.password" type="password" @change="validatePassword" class="form-control" maxlength="10" >
+                        <input :error="passwordError" v-model="formData.password" type="password" @change="validatePassword" @keyup.enter="handleSubmit" class="form-control" maxlength="10" >
                     </div>
                 </div>
             </form>
@@ -30,7 +30,7 @@
           </fieldset>
             <div class="button-container">
                     <div>
-                        <button type="primary" native-type="submit" @click="handleSubmit" :disabled="isInvalid" class="primary-button">Sign In</button>
+                        <button type="primary" native-type="submit" @click="handleSubmit" :disabled="isInvalid"  :class="{ 'primary-button': true, 'active': isFormFilled }">Sign In</button>
                     </div>
                     <div>
                         <button @click="resetForm" type="button" style=" width:100%;" class="primary-button reset-button">Reset</button>
@@ -40,32 +40,12 @@
         </el-col>
     </el-row>
   </div>
-  <div v-if="showMessageBox" class="el-overlay is-message-box" style="z-index: 2006;">
-    <div class="el-overlay-message-box">
-      <div role="dialog" aria-label="Message" aria-modal="true" class="el-message-box is-draggable">
-        <div class="el-message-box__header">
-          <div class="el-message-box__title"><span class="msg-text">Message</span></div>
-        </div>
-        <div class="el-message-box__content">
-          <div class="el-message-box__container">
-            <div class="el-message-box__message">
-              <p v-html="messageBoxContent" class="p-text"></p>
-            </div>
-          </div>
-          <div class="el-message-box__input" style="display: none;">
-            <div class="el-input"><input class="el-input__inner" type="text" autocomplete="off" placeholder=""></div>
-            <div class="el-message-box__errormsg" style="visibility: hidden;"></div>
-          </div>
-        </div>
-        <div class="el-message-box__btns"><button @click="closeMessageBox" class="el-button el-button--primary"
-            type="button"><span class="">OK</span></button></div>
-      </div>
-    </div>
-  </div>
+      <MessageBox :visible="showMessageBox" :title="messageBoxTitle" :content="messageBoxContent" :type="messageBoxType"
+        @close="handleMessageBoxClose" />
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { reactive, ref, computed } from 'vue';
 import { ElForm, ElFormItem, ElInput, ElButton } from 'element-plus'; // Removed ElMessage import
 import { useRouter } from 'vue-router';
 import MessageBox from './MessageBox.vue'; 
@@ -91,6 +71,21 @@ const messageBoxPurpose = ref(null);
 const loading = ref(false);
 const result = ref(null);
 const error = ref(null);
+
+const isFormFilled = computed(() => {
+  return formData.username.trim() !== '' && formData.password.trim() !== '' && formData.branchCd.trim() !== '';
+});
+const checkDigits = (event) => {
+  if (
+    event.key.length === 1 &&
+    (
+      isNaN(Number(event.key)) ||
+      branchCd.value.length >= maxLength
+    )
+  ) {
+    event.preventDefault();
+  }
+}
 
 const handleMessageBoxClose = () => {
   // Hide the message box
@@ -176,12 +171,16 @@ const callApi = async () => {
 
         if (payload && payload.exp) {
             const expirationTimestampMs = payload.exp * 1000;
-
+            const issuedAtTimestampMs = payload.iat * 1000;
             localStorage.setItem('authToken', token);
             localStorage.setItem('tokenExpiration', expirationTimestampMs);
             localStorage.setItem('authResponse', JSON.stringify(data));
             console.log('Login successful. Token stored.');
-            console.log('Token expires at:', new Date(expirationTimestampMs).toISOString());
+    console.log('Token expires at (UTC):', new Date(expirationTimestampMs).toISOString());
+    console.log('Token issued at (UTC):', new Date(issuedAtTimestampMs).toISOString());
+    console.log('Token expires at (PKT):', new Date(expirationTimestampMs).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }));
+    console.log('Token issued at (PKT):', new Date(issuedAtTimestampMs).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }));
+
 
             messageBoxContent.value = `Sign-on is Successful <br> Last Sign-on date is ${new Date().toLocaleDateString()}`;
             messageBoxTitle.value = 'Login Success'; 
@@ -258,6 +257,10 @@ const closeMessageBox = () => {
 </script>
 
 <style scoped>
+.primary-button.active {
+  background-color: rgb(0, 155, 131); /* Green when all fields are filled */
+}
+
 .login-container{
   display: flex;
   flex-direction: column;

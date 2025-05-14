@@ -16,15 +16,47 @@
       <h1>Upload File</h1>
     </div>
     <div class="upload-page-container">
-      <el-upload ref="uploadRef" class="upload-demo" action="" :auto-upload="false" :show-file-list="false"
-        accept=".csv" @change="handleFileChange">
-        <template #trigger>
-          <el-button id="file_input">Select File</el-button>
+      <div class="upload-button-container">
+        <div>
+          <el-upload ref="uploadRef" class="upload-demo" action="" :auto-upload="false" :show-file-list="false"
+            accept=".csv" @change="handleFileChange">
+            <template #trigger>
+              <el-button id="file_input" class="custom-button">Select File</el-button>
+            </template>
+            <template #tip>
+              <div class="upload-tip">csv files with a size less than 500MB</div>
+            </template>
+          </el-upload>
+        </div>
+        <div>
+          <el-button class="custom-button" @click="openReportModal">View History</el-button>
+        </div>
+      </div>
+      <el-dialog v-model="reportModalVisible" title="Generate File Upload History Report" width="30%" center
+        :close-on-click-modal="false" :close-on-press-escape="false">
+        <div class="modal-content">
+          <p>Please select the date range for the report.</p>
+          <el-date-picker v-model="fromDatePicker" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
+            placeholder="From Date" style="margin-right: 10px; margin-bottom: 10px;" />
+          <el-date-picker v-model="toDatePicker" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
+            placeholder="To Date" style="margin-right: 10px;" />
+          <div v-if="dateErrorMessage" class="error-message">
+            {{ dateErrorMessage }}
+          </div>
+          <div v-if="reportError" class="error-message">
+            {{ reportError }}
+          </div>
+        </div>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="reportModalVisible = false">Cancel</el-button>
+            <el-button class="generate-button"
+              @click="viewReport" :loading="isGeneratingReport">
+              {{ isGeneratingReport ? 'Generating...' : 'Generate Report' }}
+            </el-button>
+          </span>
         </template>
-        <template #tip>
-          <div class="upload-tip">csv files with a size less than 500MB</div>
-        </template>
-      </el-upload>
+      </el-dialog>
       <div v-if="fileName" class="file-name">{{ fileName }}</div>
       <div v-if="errorMessage" class="error-message">{{ errorMessage }}
       </div>
@@ -65,56 +97,49 @@
             <el-button class="accept-btn" type="primary" @click="acceptAllData()">Accept</el-button>
             <el-button class="reject-btn" @click="rejectAllData()">Reject</el-button>
           </div>
-          <div class="back-button-container">
-            <button @click="goBack" class="balh-btn back-btn">
-              Back
-            </button>
-          </div>
         </div>
 
       </div>
-      <div
-      v-else-if="!fileName && !errorMessage"
-      class="empty-state"
-      @click="triggerFileUpload"
-      @dragover.prevent="onDragOver"
-      @dragenter.prevent="onDragOver"
-      @dragleave.prevent="onDragLeave"
-      @drop.prevent="onDrop"
-      :class="{ 'drag-over': isDragging }"
-    >
-      <div class="upload-empty-container">
-        <div style="font-size: 90px; padding-right: 15px;">
-          <el-icon class="el-icon--upload" viewBox="0 0 24 24"
-            ><upload-filled
-          /></el-icon>
-        </div>
-        <div>
-          <p>Drag and drop file here or click to select.</p>
+      <div v-else-if="!fileName && !errorMessage" class="empty-state" @click="triggerFileUpload"
+        @dragover.prevent="onDragOver" @dragenter.prevent="onDragOver" @dragleave.prevent="onDragLeave"
+        @drop.prevent="onDrop" :class="{ 'drag-over': isDragging }">
+        <div class="upload-empty-container">
+          <div style="font-size: 90px; padding-right: 15px;">
+            <el-icon class="el-icon--upload" viewBox="0 0 24 24"><upload-filled /></el-icon>
+          </div>
+          <div>
+            <p>Drag and drop file here or click to select.</p>
+          </div>
         </div>
       </div>
-    </div>
       <div
         v-else-if="fileName && (tableData.length === 0 || (columns.length === 1 && columns[0].prop === 'placeholder')) && !errorMessage"
         class="empty-state">
 
         <p>File selected but no data or valid columns found.</p>
-        </div>
-
+      </div>
+      <div class="back-button-container">
+        <button @click="goBack" class="balh-btn back-btn">
+          Back
+        </button>
+      </div>
       <MessageBox :visible="showMessageBox" :title="messageBoxTitle" :content="messageBoxContent" :type="messageBoxType"
         @close="handleMessageBoxClose" />
-
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import Papa from 'papaparse';
 import MessageBox from './MessageBox.vue';
 import { useRouter } from 'vue-router';
 import { UploadFilled } from '@element-plus/icons-vue'
 import { Loading } from '@element-plus/icons-vue' // Import Loading icon
+const reportModalVisible = ref(false);
+const isGeneratingReport = ref(false);
+const reportError = ref(null);
+
 
 
 const router = useRouter();
@@ -146,7 +171,120 @@ const fileName = ref('');
 const columns = ref([]);
 const uploadRef = ref(null);
 const mappedObjects = ref([]);
+const dateErrorMessage = ref(null);
+const fromDatePicker = ref(null);
+const toDatePicker = ref(null);
 
+watch([fromDatePicker, toDatePicker], ([newFromDate, newToDate]) => {
+  if (newFromDate && newToDate) {
+    const from = new Date(newFromDate);
+    const to = new Date(newToDate);
+    if (from > to) {
+      dateErrorMessage.value = 'From Date must be earlier than To Date.';
+    } else {
+      dateErrorMessage.value = null;
+    }
+  } else {
+    dateErrorMessage.value = null;
+  }
+});
+
+
+const openReportModal = () => {
+  reportModalVisible.value = true;
+  reportError.value = null;
+};
+
+const viewReport = async () => {
+  if (dateErrorMessage.value) {
+    return;
+  };
+  reportError.value = null;
+  if (!fromDatePicker.value || !toDatePicker.value) {
+    reportError.value = 'Please select both From and To dates.';
+    return;
+  }
+
+  isGeneratingReport.value = true; // Start loading state
+
+  try {
+    const authToken = JSON.parse(localStorage.getItem("authResponse")).token;
+    const username = JSON.parse(localStorage.getItem("authResponse")).userName;
+    const design = 'cts_report.rptdesign';
+    const format = 'pdf';
+    const fromDate = fromDatePicker.value;
+    const toDate = toDatePicker.value;
+    console.log("username passed for report:", username);
+    const url = `http://localhost:8081/api/data-access/consignment-details/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/octet-stream',
+        'Authorization': `Bearer ${authToken}`,
+      }
+    });
+
+    if (!response.ok) {
+      const contentType = response.headers.get('Content-Type');
+      let errorBody = null;
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          errorBody = await response.json();
+        } else {
+          errorBody = await response.text();
+        }
+      } catch (e) {
+        console.error("Error parsing response body", e);
+      }
+      if (response.status === 400 && errorBody && errorBody.message === "No data found for the given date range.") {
+        reportError.value = "No data found for the selected date range.";
+      } else {
+        throw {
+          status: response.status,
+          statusText: response.statusText,
+          message: `HTTP error! Status: ${response.status}`,
+          body: errorBody
+        };
+      }
+      isGeneratingReport.value = false; // End loading state
+      return; // Exit the function if there was an error
+    }
+
+    const reportBlob = await response.blob();
+
+    if (reportBlob.size === 0) {
+      reportError.value = "The generated report is empty. Please check the date range.";
+      isGeneratingReport.value = false; // End loading state
+      return; // Exit if the blob is empty
+    }
+
+
+    const blob = new Blob([reportBlob], { type: 'application/pdf' });
+    const fileURL = URL.createObjectURL(blob);
+
+    window.open(fileURL, '_blank');
+
+    reportModalVisible.value = false;
+
+  } catch (error) {
+    console.error("Error fetching report:", error);
+    isGeneratingReport.value = false; // End loading state
+    if (error && error.status === 401) {
+      reportError.value = "Unauthorized: Your session may have expired or you lack permission. Please log in again.";
+    } else if (error && error.status) {
+      reportError.value = `Failed to generate the report. Server responded with status ${error.status}: ${error.statusText}.`;
+    } else if (error instanceof TypeError) {
+      reportError.value = `Network Error: Could not reach the report server. Please check your connection and the server address. (${error.message})`;
+    }
+    else {
+      reportError.value = "Failed to generate the report due to an unexpected error.";
+    }
+    ElMessage.error(reportError.value); // Show Element Plus error message
+  } finally {
+    isGeneratingReport.value = false; // Ensure loading state is turned off
+  }
+}
 const onDragOver = (event) => {
   event.preventDefault(); // Prevent default browser behavior
   isDragging.value = true;
@@ -170,7 +308,7 @@ const onDrop = (event) => {
     // Call a function to process the dropped files
     processFiles(droppedFiles); // Call the new processFiles function
   }
-  else{
+  else {
     console.log('No files dropped.'); // Log if fileList is empty
   }
 };
@@ -237,9 +375,8 @@ const processFiles = (files) => {
     return;
   }
 
-  if (file.size > 500 * 1024 * 1024) { // 500MB
+  if (file.size > 500 * 1024 * 1024) {
     errorMessage.value = 'File size exceeds the limit of 500MB.';
-     // Reset other state variables
     fileName.value = '';
     tableData.value = [];
     columns.value = [];
@@ -253,7 +390,6 @@ const processFiles = (files) => {
     return;
   }
 
-   // Clear previous state
   errorMessage.value = null;
   tableData.value = [];
   columns.value = [];
@@ -291,7 +427,6 @@ const processFiles = (files) => {
             columns.value = [];
             mappedObjects.value = [];
             total_record = 0;
-            //fileName.value = ''; // Keep file name to show the file was selected but invalid
             return;
           }
 
@@ -325,7 +460,7 @@ const processFiles = (files) => {
             columns.value = [];
             mappedObjects.value = [];
             total_record = 0;
-             // Keep file name to show the file was selected but invalid
+            // Keep file name to show the file was selected but invalid
           }
 
         } else {
@@ -335,7 +470,7 @@ const processFiles = (files) => {
           total_record = 0;
           console.log("CSV file is empty or contains no data rows.");
           errorMessage.value = "CSV file is empty or contains no data rows.";
-           // Keep file name to show the file was selected but empty
+          // Keep file name to show the file was selected but empty
         }
       },
       error: (error) => {
@@ -345,7 +480,7 @@ const processFiles = (files) => {
         tableData.value = [];
         columns.value = [];
         total_record = 0;
-         // Keep file name to show the file was selected but errored
+        // Keep file name to show the file was selected but errored
       },
     });
   };
@@ -357,7 +492,7 @@ const processFiles = (files) => {
     tableData.value = [];
     columns.value = [];
     total_record = 0;
-     // Keep file name to show the file was selected but errored
+    // Keep file name to show the file was selected but errored
   };
 
   reader.readAsText(file);
@@ -366,23 +501,23 @@ const processFiles = (files) => {
 
 // Modify handleFileChange to use the new processFiles function
 const handleFileChange = (uploadFile) => {
-    // el-upload gives an object with a `raw` property containing the File object
-    if (uploadFile && uploadFile.raw) {
-      processFiles(uploadFile.raw);
-    } else {
-      errorMessage.value = 'File is not properly loaded from upload input.';
-       // Reset other state variables
-      fileName.value = '';
-      tableData.value = [];
-      columns.value = [];
-      mappedObjects.value = [];
-      total_record = 0;
-      file_id = 0;
-      rejectedRows.value = [];
-      acceptedRows.value = [];
-      dataToSendToApi.value = [];
-      validationErrors.value = [];
-    }
+  // el-upload gives an object with a `raw` property containing the File object
+  if (uploadFile && uploadFile.raw) {
+    processFiles(uploadFile.raw);
+  } else {
+    errorMessage.value = 'File is not properly loaded from upload input.';
+    // Reset other state variables
+    fileName.value = '';
+    tableData.value = [];
+    columns.value = [];
+    mappedObjects.value = [];
+    total_record = 0;
+    file_id = 0;
+    rejectedRows.value = [];
+    acceptedRows.value = [];
+    dataToSendToApi.value = [];
+    validationErrors.value = [];
+  }
 };
 
 
@@ -399,16 +534,16 @@ const triggerFileUpload = () => {
       console.error("File input element not found on uploadRef. Cannot trigger file upload.");
       // Fallback attempt (less reliable as depends on DOM structure)
       const fallbackInput = document.querySelector('.upload-demo input[type="file"]');
-       if (fallbackInput) {
-         fallbackInput.click();
-       } else {
-         console.error("Fallback file input element also not found.");
-         errorMessage.value = "Unable to open file selection dialog.";
-       }
+      if (fallbackInput) {
+        fallbackInput.click();
+      } else {
+        console.error("Fallback file input element also not found.");
+        errorMessage.value = "Unable to open file selection dialog.";
+      }
     }
   } else {
-      console.error("uploadRef is not available.");
-      errorMessage.value = "Upload component not initialized correctly.";
+    console.error("uploadRef is not available.");
+    errorMessage.value = "Upload component not initialized correctly.";
   }
 };
 
@@ -426,8 +561,8 @@ const formatDate = (dateString) => {
 
   // Check for empty string after trimming
   if (trimmedDateString === '') {
-      console.log("Output dateString (trimmed empty):", null);
-      return null; // Return null for empty string input
+    console.log("Output dateString (trimmed empty):", null);
+    return null; // Return null for empty string input
   }
 
 
@@ -456,23 +591,23 @@ const formatDate = (dateString) => {
     // Check if Date object is valid and represents the input string reasonably
     // This is a basic check; for strict validation, regex or a date library is better.
     // Simple check: Does parsing and reformatting give the same year?
-     // Also check if the date components match the input components to avoid false positives
+    // Also check if the date components match the input components to avoid false positives
     if (!isNaN(date.getTime())) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const formattedDate = `${year}-${month}-${day}`;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
 
-        // Basic check to see if the parsed date components match the input components (for yyyy-MM-dd input)
-        // This helps differentiate yyyy-MM-dd from other formats that Date might incorrectly parse
-        const parts_ymd_check = trimmedDateString.split('-');
-        if (parts_ymd_check.length === 3 &&
-            parseInt(parts_ymd_check[0], 10) === year &&
-            parseInt(parts_ymd_check[1], 10) === parseInt(month, 10) &&
-            parseInt(parts_ymd_check[2], 10) === parseInt(day, 10)) {
-             console.log("Output dateString (yyyy-MM-dd parsed by Date object):", formattedDate);
-             return formattedDate;
-        }
+      // Basic check to see if the parsed date components match the input components (for yyyy-MM-dd input)
+      // This helps differentiate yyyy-MM-dd from other formats that Date might incorrectly parse
+      const parts_ymd_check = trimmedDateString.split('-');
+      if (parts_ymd_check.length === 3 &&
+        parseInt(parts_ymd_check[0], 10) === year &&
+        parseInt(parts_ymd_check[1], 10) === parseInt(month, 10) &&
+        parseInt(parts_ymd_check[2], 10) === parseInt(day, 10)) {
+        console.log("Output dateString (yyyy-MM-dd parsed by Date object):", formattedDate);
+        return formattedDate;
+      }
     }
   } catch (error) {
     console.log("Error parsing date with Date object:", trimmedDateString, error);
@@ -504,12 +639,12 @@ const formatDate = (dateString) => {
       // A more robust solution would check for valid dates (e.g., Feb 30th is invalid).
       // For now, this attempts dd/MM/yyyy if MM/dd/yyyy didn't yield a valid Date object.
       if (part2Int >= 1 && part2Int <= 12 && part1Int >= 1 && part1Int <= 31) {
-         let date = new Date(`${year}-${part2}-${part1}`); //yyyy-MM-dd format for Date constructor
-         if (!isNaN(date.getTime())) {
-           const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-           console.log("Output dateString (dd/MM/yyyy parsed):", formattedDate);
-           return formattedDate;
-         }
+        let date = new Date(`${year}-${part2}-${part1}`); //yyyy-MM-dd format for Date constructor
+        if (!isNaN(date.getTime())) {
+          const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+          console.log("Output dateString (dd/MM/yyyy parsed):", formattedDate);
+          return formattedDate;
+        }
       }
     }
   }
@@ -756,15 +891,15 @@ const triggerAcceptApiCall = async (dataArray) => {
     let successMessage = `${apiMessage}<br>`;
 
     if (validationErrors.value.length > 0) {
-        // If there were validation errors but some data was accepted
-         successMessage += `Some records had validation errors and were not processed.<br>`;
-         successMessage += `accepted: ${finalAcceptedCount} records.<br>`;
-         successMessage += `Total records in file: ${total_record}.`;
+      // If there were validation errors but some data was accepted
+      successMessage += `Some records had validation errors and were not processed.<br>`;
+      successMessage += `accepted: ${finalAcceptedCount} records.<br>`;
+      successMessage += `Total records in file: ${total_record}.`;
     } else {
-        // If no validation errors or all passed validation
-         successMessage += `accepted: ${finalAcceptedCount} records.<br>`;
-         successMessage += `rejected: ${finalRejectedCount} records.<br>`;
-         successMessage += `Total records in file: ${total_record}.`;
+      // If no validation errors or all passed validation
+      successMessage += `accepted: ${finalAcceptedCount} records.<br>`;
+      successMessage += `rejected: ${finalRejectedCount} records.<br>`;
+      successMessage += `Total records in file: ${total_record}.`;
     }
 
 
@@ -789,9 +924,9 @@ const triggerAcceptApiCall = async (dataArray) => {
     messageBoxPurpose.value = 'apiResponse'; // Indicate this is an API response message
     showMessageBox.value = true;
   } finally {
-      // Clear the dataToSendToApi and validation errors after the attempt
-      dataToSendToApi.value = [];
-      validationErrors.value = []; // Clear validation errors here as they've been displayed or processed
+    // Clear the dataToSendToApi and validation errors after the attempt
+    dataToSendToApi.value = [];
+    validationErrors.value = []; // Clear validation errors here as they've been displayed or processed
   }
 };
 
@@ -840,7 +975,7 @@ const rejectAllData = async () => {
     messageBoxContent.value = `Cannot reject invalid file type. Please upload a file with 7, 8, or 16 columns.`;
     messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
-    resetAfterProcess(); 
+    resetAfterProcess();
     return;
   }
 
@@ -851,8 +986,8 @@ const rejectAllData = async () => {
   acceptedRows.value = []; // Set accepted rows to empty
   rejectedRows.value = []; // Clear rejected rows first
   for (let i = 0; i < total_record; i++) {
-      // Assuming 0-based indexing is fine internally, will adjust for API param if needed
-      rejectedRows.value.push(i);
+    // Assuming 0-based indexing is fine internally, will adjust for API param if needed
+    rejectedRows.value.push(i);
   }
 
   const acceptCountToSend = 0; // 0 accepted when rejecting all
@@ -884,7 +1019,7 @@ const rejectAllData = async () => {
   console.log("Reject URL:", rejectUrl);
 
   try {
-    const data = await makeApiRequest(rejectUrl, "POST", headers); 
+    const data = await makeApiRequest(rejectUrl, "POST", headers);
 
     apiResponseData.value = data;
     apiErrorMessage.value = null;
@@ -893,10 +1028,10 @@ const rejectAllData = async () => {
     messageBoxType.value = "success";
     // Display feedback based on the rejection action
     const apiMessage = data.message || `Successfully rejected ${total_record} records.`;
-     messageBoxContent.value = `${apiMessage}<br>Total rejected: ${total_record}<br>Total accepted: 0<br>Total records in file: ${total_record}.`;
+    messageBoxContent.value = `${apiMessage}<br>Total rejected: ${total_record}<br>Total accepted: 0<br>Total records in file: ${total_record}.`;
 
 
-    messageBoxPurpose.value = 'apiResponse'; 
+    messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
 
 
@@ -909,7 +1044,7 @@ const rejectAllData = async () => {
     } else if (error && error.status) {
       messageBoxType.value = "error";
       messageBoxTitle.value = "Rejection Failed";
-      apiErrorMessage.value= `Failed to generate the report. Server responded with status ${error.status}: ${error.statusText}.`;
+      apiErrorMessage.value = `Failed to generate the report. Server responded with status ${error.status}: ${error.statusText}.`;
     } else if (error instanceof TypeError) {
       messageBoxType.value = "error";
       messageBoxTitle.value = "Rejection Failed";
@@ -928,9 +1063,9 @@ const rejectAllData = async () => {
     messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
   } finally {
-      isLoading.value = false; // Ensure loading is turned off
-      // Reset state after the API response (success or failure)
-      // resetAfterProcess(); // Reset happens after message box is closed
+    isLoading.value = false; // Ensure loading is turned off
+    // Reset state after the API response (success or failure)
+    // resetAfterProcess(); // Reset happens after message box is closed
   }
 };
 
@@ -964,7 +1099,7 @@ const acceptAllData = async () => {
     messageBoxContent.value = `Cannot process invalid file type. Please upload a file with 7, 8, or 16 columns.`;
     messageBoxPurpose.value = 'apiResponse'; // Use apiResponse purpose as it's a final status message
     showMessageBox.value = true;
-     // No isLoading = false here
+    // No isLoading = false here
     resetAfterProcess(); // Reset state as file type is invalid
     return;
   }
@@ -993,17 +1128,17 @@ const acceptAllData = async () => {
       const rawConsignmentValue = originalRow[consignmentIdKey];
       // Check if value is null, undefined, empty string, or not a number
       if (rawConsignmentValue === null || rawConsignmentValue === undefined || rawConsignmentValue.toString().trim() === '' || isNaN(rawConsignmentValue)) {
-         rowIsValid = false;
-         currentValidationErrors.push({
-           rowIndex: i,
-           columnName: consignmentIdKey,
-           value: rawConsignmentValue,
-           message: "Invalid consignment ID. Must be a number."
-         });
+        rowIsValid = false;
+        currentValidationErrors.push({
+          rowIndex: i,
+          columnName: consignmentIdKey,
+          value: rawConsignmentValue,
+          message: "Invalid consignment ID. Must be a number."
+        });
       } else {
-         // Convert to number for consistency if needed, or keep as string if API expects string
-         // For now, keeping as string as per original data, validation is just for format
-         // formattedObj[consignmentIdKey] = parseInt(rawConsignmentValue, 10); // Example if API needs number
+        // Convert to number for consistency if needed, or keep as string if API expects string
+        // For now, keeping as string as per original data, validation is just for format
+        // formattedObj[consignmentIdKey] = parseInt(rawConsignmentValue, 10); // Example if API needs number
       }
     }
 
@@ -1012,45 +1147,45 @@ const acceptAllData = async () => {
     let optionalDateFields = []; // Keep track of dates that are allowed to be empty/null
 
     if (file_id === 1) { // Shipment letter
-        dateFieldsToValidate = [
-            headingMap["booking date"],
-            headingMap["card creation date"]
-        ].filter(key => key !== undefined);
+      dateFieldsToValidate = [
+        headingMap["booking date"],
+        headingMap["card creation date"]
+      ].filter(key => key !== undefined);
     } else if (file_id === 2) { // Delivered letter
-        dateFieldsToValidate = [
-            headingMap["delivery date"]
-        ].filter(key => key !== undefined);
-        optionalDateFields.push(headingMap["delivery date"]); 
-    } else if (file_id === 3) { 
-         dateFieldsToValidate = [
-            headingMap["date of return shipment received at branch"]
-         ].filter(key => key !== undefined);
-         optionalDateFields.push(headingMap["date of return shipment received at branch"]); 
+      dateFieldsToValidate = [
+        headingMap["delivery date"]
+      ].filter(key => key !== undefined);
+      optionalDateFields.push(headingMap["delivery date"]);
+    } else if (file_id === 3) {
+      dateFieldsToValidate = [
+        headingMap["date of return shipment received at branch"]
+      ].filter(key => key !== undefined);
+      optionalDateFields.push(headingMap["date of return shipment received at branch"]);
     }
 
     // Validate the determined date fields
     dateFieldsToValidate.forEach(dateKey => {
-        if (dateKey) { // Ensure the mapped key exists
-            const rawDate = originalRow[dateKey];
-            const formattedDate = formatDate(rawDate);
-            console.log(`Row ${i + 1}: Raw ${dateKey}: "${rawDate}", Formatted: "${formattedDate}"`); // Added detailed log
+      if (dateKey) { // Ensure the mapped key exists
+        const rawDate = originalRow[dateKey];
+        const formattedDate = formatDate(rawDate);
+        console.log(`Row ${i + 1}: Raw ${dateKey}: "${rawDate}", Formatted: "${formattedDate}"`); // Added detailed log
 
-            // Check if the formatted date is null AND if this date field is *not* in the optional list
-            if (formattedDate === null && !optionalDateFields.includes(dateKey)) {
-                // This date field is required and invalid
-                rowIsValid = false; // Mark the row as invalid
-                currentValidationErrors.push({
-                    rowIndex: i,
-                    columnName: dateKey,
-                    value: rawDate,
-                    message: "Invalid date format"
-                });
-                 formattedObj[dateKey] = null; // Set to null for API if invalid
-            } else {
-                 // Date was formatted successfully OR it was an optional date field and was null/empty
-                 formattedObj[dateKey] = formattedDate; // Use the formatted date (yyyy-MM-dd) or null
-            }
+        // Check if the formatted date is null AND if this date field is *not* in the optional list
+        if (formattedDate === null && !optionalDateFields.includes(dateKey)) {
+          // This date field is required and invalid
+          rowIsValid = false; // Mark the row as invalid
+          currentValidationErrors.push({
+            rowIndex: i,
+            columnName: dateKey,
+            value: rawDate,
+            message: "Invalid date format"
+          });
+          formattedObj[dateKey] = null; // Set to null for API if invalid
+        } else {
+          // Date was formatted successfully OR it was an optional date field and was null/empty
+          formattedObj[dateKey] = formattedDate; // Use the formatted date (yyyy-MM-dd) or null
         }
+      }
     });
 
 
@@ -1095,8 +1230,29 @@ const acceptAllData = async () => {
 
 </script>
 
-
 <style scoped>
+.balh-btn.back-btn:hover:not(.disabled) {
+  background-color: #afb9c0;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+.upload-button-container {
+  display: flex;
+  justify-content: space-between;
+}
+
+.generate-button{
+  border-color: rgb(0, 155, 131); 
+  background-color: rgb(0, 155, 131); 
+  font-size: 1em;
+  color: white;
+}
+.generate-button:hover:not(.disabled) {
+  background-color: rgb(0, 155, 131);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
 .buttons-container {
   display: flex;
 }
@@ -1126,7 +1282,6 @@ const acceptAllData = async () => {
   max-height: 465px;
   overflow-y: auto;
 
-  /* Style the scrollbar for Chrome, Safari, Edge */
   &::-webkit-scrollbar {
     height: 8px;
     width: 8px;
@@ -1141,17 +1296,13 @@ const acceptAllData = async () => {
   &::-webkit-scrollbar-thumb {
     border-radius: 10px;
     background: #888;
-    /* Muted gray/green, adjust color to match screenshot precisely */
     border-radius: 10px;
-    /* Optional: rounded corners for the thumb */
   }
 
   &::-webkit-scrollbar-thumb:hover {
     background: #555;
-    /* Darker color on hover */
   }
 
-  /* Hide the scrollbar buttons (arrows) for Webkit browsers */
   &::-webkit-scrollbar-button {
     display: none;
   }
@@ -1232,29 +1383,29 @@ const acceptAllData = async () => {
 
 .upload-icon {
   width: 50px;
-  /* Adjust size as needed */
   height: 50px;
-  /* Adjust size as needed */
   fill: white;
-  /* Icon color */
   margin-bottom: 10px;
-  /* Space between icon and text */
 }
 
 #file_input {
-  background-color: #29f98e;
+  background-color: rgb(0, 155, 131);
   color: black;
-  border: 0.5px solid #29f98e
+  border: 0.5px solid rgb(0, 155, 131);
+  font-size: 1em;
 }
 
 .back-button-container {
   margin-top: 2rem;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .balh-btn.back-btn {
   background-color: #d1d6da;
   color: var(--balh-white);
-  max-width: 150px;
+  max-width: 120px;
+  max-height: 33px;
   padding: 0.8rem 1.5rem;
   font-size: 1rem;
 }
@@ -1287,9 +1438,7 @@ const acceptAllData = async () => {
 
 .balh-btn:hover:not(.disabled) {
   transform: translateY(-5px);
-  /* Lift effect */
   box-shadow: var(--balh-hover-shadow);
-  /* Enhanced shadow on hover */
 }
 
 
@@ -1353,7 +1502,7 @@ const acceptAllData = async () => {
 
 .heading {
   text-align: center;
-  color: #29f98e;
+  color: black;
   width: 100%;
 }
 
@@ -1361,6 +1510,7 @@ const acceptAllData = async () => {
   font-size: 1.8em;
   font-weight: bold;
   margin: 0;
+  color: #d1d6da;
 }
 
 
@@ -1376,44 +1526,77 @@ const acceptAllData = async () => {
   justify-content: flex-start;
 }
 
+.modal-content {
+  padding: 20px;
+  text-align: center;
+}
+
+.modal-content p {
+  margin-bottom: 20px;
+}
+
+.modal-content .el-date-editor {
+  width: auto;
+}
+
 .upload-container .el-upload {
   margin-top: 0;
   margin-bottom: 0;
-  /* Remove bottom margin here */
   display: flex;
   align-items: center;
   gap: 15px;
-  /* Increased gap */
   width: 100%;
   justify-content: flex-start;
   flex-wrap: wrap;
 }
 
 .el-upload .el-button[type="success"] {
-  background-color: #00a651;
-  border-color: #00a651;
+  background-color: rgb(0, 155, 131);
+  border-color: rgb(0, 155, 131);
   color: white;
   font-weight: bold;
   border-radius: 4px;
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-  /* Using standard CSS variables for hover/active */
   --el-button-hover-border-color: #007a3b;
   --el-button-hover-bg-color: #007a3b;
   --el-button-active-border-color: #007a3b;
   --el-button-active-bg-color: #007a3b;
   padding: 10px 20px;
-  /* Increased padding */
   height: auto;
   font-size: 1em;
-  /* Standard font size */
 }
 
+.custom-button {
+  background-color: rgb(0, 155, 131);
+  color: var(--balh-white);
+  padding: 10px 20px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1em;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  max-width: none;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+.custom-button:hover:not(.disabled) {
+  background-color: rgb(0, 155, 131);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
 
+.custom-button.disabled {
+  background-color: var(--balh-disabled-grey);
+  color: var(--balh-disabled-text);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
 
 .file-name {
-  margin-top: 10px;
+  margin-top: 5px;
   font-weight: bold;
-  color: #29f98e;
+  color: #d1d6da;
   text-align: left;
   width: 100%;
   word-break: break-all;
@@ -1422,7 +1605,6 @@ const acceptAllData = async () => {
 
 .error-message {
   margin-top: 15px;
-  /* Increased margin */
   padding: 10px;
   background-color: #fee6e6;
   color: #f56c6c;
@@ -1458,32 +1640,14 @@ const acceptAllData = async () => {
 }
 
 .action-buttons .el-button[type="primary"] {
-  background-color: #00a651;
-  border-color: #00a651;
+  background-color: #d1d6da;
+  border-color: rgb(0, 155, 131);
   color: white;
-  --el-button-hover-border-color: #007a3b;
-  --el-button-hover-bg-color: #007a3b;
-  --el-button-active-border-color: #007a3b;
-  --el-button-active-bg-color: #007a66;
+  --el-button-hover-border-color: rgb(0, 155, 131);
+  --el-button-hover-bg-color: rgb(0, 155, 131);
+  --el-button-active-border-color: rgb(0, 155, 131);
+  --el-button-active-bg-color: rgb(0, 155, 131);
 }
-
-.reject-btn {
-  background-color: #f56c6c;
-  /* Element Plus danger color */
-  border-color: #f56c6c;
-  color: white;
-  --el-button-hover-border-color: #e52222;
-  --el-button-hover-bg-color: #e52222;
-  --el-button-active-border-color: #e52222;
-  --el-button-active-bg-color: #e52222;
-}
-
-.reject-btn:hover {
-  background-color: #e52222;
-  border-color: #e52222;
-  color: white;
-}
-
 
 .empty-state {
   margin-top: 20px;
@@ -1619,32 +1783,34 @@ button {
 
 
 .accept-btn {
-  background-color: rgb(20, 168, 226);
+  background-color: #d1d6da;
   color: white;
   padding: 8px 15px;
   border-radius: 4px;
   border: none;
   cursor: pointer;
   font-weight: bold;
+  color: black;
 }
 
 .accept-btn:hover {
-  background-color: skyblue;
+  background-color: #d1d6da;
   color: black;
 }
 
 .reject-btn {
-  background-color: #e52222c4;
+  background-color: #d1d6da;
   color: white;
   padding: 8px 15px;
   border-radius: 4px;
   border: none;
   cursor: pointer;
   font-weight: bold;
+  color: black;
 }
 
 .reject-btn:hover {
-  background-color: #f14c4cc4;
+  background-color: #d1d6da;
   color: black;
 }
 
@@ -1656,8 +1822,6 @@ button {
   width: 100%;
   justify-content: flex-start;
 }
-
-
 
 .heading {
   text-align: center;
@@ -1705,8 +1869,8 @@ button {
 }
 
 .el-upload .el-button[type="success"] {
-  background-color: #00a651;
-  border-color: #00a651;
+  background-color: rgb(0, 155, 131);
+  border-color: rgb(0, 155, 131);
   color: white;
   font-weight: bold;
   border-radius: 4px;
@@ -1774,7 +1938,7 @@ button {
     margin: 0vw 5vw;
     padding: 20px;
     /* width: auto;
-    max-width: none; */
+      max-width: none; */
   }
 
   .upload-container .el-upload {
