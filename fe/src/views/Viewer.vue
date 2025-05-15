@@ -21,14 +21,15 @@
           <div class="container">
             <div class="main-div">
               <div class="input-container">
-                <el-select v-model="select" class="select-field" placeholder="Select"> 
+                <el-select v-model="select" class="select-field" placeholder="Select">
                   <el-option label="Consignment Number" value="consignment_id" />
                   <el-option label="Account Number" value="account_no" />
                   <el-option label="Customer's CNIC Number" value="customer_cnic_number" />
                   <el-option label="Address" value="address" />
                   <el-option label="City" value="city" />
                 </el-select>
-                <el-input v-model="input"  placeholder="Please input" @keyup.enter="searchButton" class="input-field"></el-input>
+                <el-input v-model="input" placeholder="Please input" @keyup.enter="searchButton"
+                  class="input-field"></el-input>
                 <el-button class="custom-button" @click="searchButton">Search</el-button>
                 <el-button class="custom-button" @click="openReportModal">View History</el-button>
               </div>
@@ -113,12 +114,12 @@
         </div>
       </div>
       <el-dialog v-model="reportModalVisible" title="Generate File Upload History Report" width="30%" center
-        :close-on-click-modal="false" :close-on-press-escape="false">
+        :close-on-click-modal="false" :close-on-press-escape="false" @close="closeModal">
         <div class="modal-content">
           <p>Please select the date range for the report.</p>
           <el-date-picker v-model="fromDatePicker" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
             placeholder="From Date" style="margin-right: 10px; margin-bottom: 10px;" />
-          <el-date-picker v-model="toDatePicker" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
+          <el-date-picker v-model="toDatePicker" :disabled-date="disableToDate" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
             placeholder="To Date" style="margin-right: 10px;" />
           <div v-if="dateErrorMessage" class="error-message">
             {{ dateErrorMessage }}
@@ -129,7 +130,7 @@
         </div>
         <template #footer>
           <span class="dialog-footer">
-            <el-button class="cancel-btn" @click="reportModalVisible = false">Cancel</el-button>
+            <el-button class="cancel-btn" @click="closeModal" >Cancel</el-button>
             <el-button class="generate-button" @click="viewReport" :loading="isGeneratingReport">
               {{ isGeneratingReport ? 'Generating...' : 'Generate Report' }}
             </el-button>
@@ -139,8 +140,8 @@
     </div>
 
   </div>
-  <MessageBox  :visible="showMessageBox" :title="messageBoxTitle" :content="messageBoxContent"
-    :type="messageBoxType" @close="handleMessageBoxClose" />
+  <MessageBox :visible="showMessageBox" :title="messageBoxTitle" :content="messageBoxContent" :type="messageBoxType"
+    @close="handleMessageBoxClose" />
 </template>
 
 <script lang="ts" setup>
@@ -168,6 +169,8 @@ const messageBoxContent = ref('');
 const messageBoxTitle = ref('');
 const messageBoxType = ref('info');
 const messageBoxPurpose = ref(null);
+const today = new Date();
+
 
 
 watch([fromDatePicker, toDatePicker], ([newFromDate, newToDate]) => {
@@ -184,6 +187,14 @@ watch([fromDatePicker, toDatePicker], ([newFromDate, newToDate]) => {
   }
 });
 
+const closeModal = () =>{
+  reportModalVisible.value = false
+  fromDatePicker.value = "";
+  toDatePicker.value = "";
+}
+const disableToDate = (date) => {
+  return date > today;
+};
 const handleMessageBoxClose = () => {
   showMessageBox.value = false;
   messageBoxContent.value = '';
@@ -209,83 +220,97 @@ const viewReport = async () => {
   }
 
   isGeneratingReport.value = true;
+  const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
+  if (tokenExpiration >= Date.now()) {
+    try {
+      const authToken = JSON.parse(localStorage.getItem("authResponse"))?.token;
+      const username = JSON.parse(localStorage.getItem("authResponse"))?.userName;
+      const design = 'cts_report.rptdesign';
+      const format = 'pdf';
+      const fromDate = fromDatePicker.value;
+      const toDate = toDatePicker.value;
+      console.log("username passed for report:", username);
+      const url = `http://localhost:8081/api/data-access/consignment-details/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
 
-  try {
-    const authToken = JSON.parse(localStorage.getItem("authResponse"))?.token;
-    const username = JSON.parse(localStorage.getItem("authResponse"))?.userName;
-    const design = 'cts_report.rptdesign';
-    const format = 'pdf';
-    const fromDate = fromDatePicker.value;
-    const toDate = toDatePicker.value;
-    console.log("username passed for report:", username);
-    const url = `http://localhost:8081/api/data-access/consignment-details/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/octet-stream',
-        'Authorization': `Bearer ${authToken}`,
-      }
-    });
-
-    if (!response.ok) {
-      const contentType = response.headers.get('Content-Type');
-      let errorBody: any = null;
-      try {
-        if (contentType && contentType.includes('application/json')) {
-          errorBody = await response.json();
-        } else {
-          errorBody = await response.text();
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/octet-stream',
+          'Authorization': `Bearer ${authToken}`,
         }
-      } catch (e) {
-        console.error("Error parsing response body", e);
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get('Content-Type');
+        let errorBody: any = null;
+        try {
+          if (contentType && contentType.includes('application/json')) {
+            errorBody = await response.json();
+          } else {
+            errorBody = await response.text();
+          }
+        } catch (e) {
+          console.error("Error parsing response body", e);
+        }
+        if (response.status === 400 && errorBody && errorBody.message === "No data found for the given date range.") {
+          reportError.value = "No data found for the selected date range.";
+        } else {
+          throw {
+            status: response.status,
+            statusText: response.statusText,
+            message: `HTTP error! Status: ${response.status}`,
+            body: errorBody
+          };
+        }
+        isGeneratingReport.value = false;
+        return;
       }
-      if (response.status === 400 && errorBody && errorBody.message === "No data found for the given date range.") {
-        reportError.value = "No data found for the selected date range.";
-      } else {
-        throw {
-          status: response.status,
-          statusText: response.statusText,
-          message: `HTTP error! Status: ${response.status}`,
-          body: errorBody
-        };
+
+      const reportBlob = await response.blob();
+
+      if (reportBlob?.size === 0) {
+        reportError.value = "The generated report is empty. Please check the date range.";
+        isGeneratingReport.value = false;
+        return;
       }
+
+
+      const blob = new Blob([reportBlob], { type: 'application/pdf' });
+      const fileURL = URL.createObjectURL(blob);
+
+      window.open(fileURL, '_blank');
+
+      reportModalVisible.value = false;
+
+    } catch (error: any) {
+      console.error("Error fetching report:", error);
       isGeneratingReport.value = false;
-      return;
-    }
-
-    const reportBlob = await response.blob();
-
-    if (reportBlob?.size === 0) {
-      reportError.value = "The generated report is empty. Please check the date range.";
+      if (error && error.status === 401) {
+        reportError.value = "Unauthorized: Your session may have expired or you lack permission. Please log in again.";
+      } else if (error && error.status) {
+        reportError.value = `Failed to generate the report. Server responded with status ${error.status}: ${error.statusText}.`;
+      } else if (error instanceof TypeError) {
+        reportError.value = `Network Error: Could not reach the report server. Please check your connection and the server address. (${error.message})`;
+      }
+      else {
+        reportError.value = "Failed to generate the report due to an unexpected error.";
+      }
+      ElMessage.error(reportError.value);
+    } finally {
       isGeneratingReport.value = false;
-      return;
     }
-
-
-    const blob = new Blob([reportBlob], { type: 'application/pdf' });
-    const fileURL = URL.createObjectURL(blob);
-
-    window.open(fileURL, '_blank');
-
-    reportModalVisible.value = false;
-
-  } catch (error: any) {
-    console.error("Error fetching report:", error);
-    isGeneratingReport.value = false;
-    if (error && error.status === 401) {
-      reportError.value = "Unauthorized: Your session may have expired or you lack permission. Please log in again.";
-    } else if (error && error.status) {
-      reportError.value = `Failed to generate the report. Server responded with status ${error.status}: ${error.statusText}.`;
-    } else if (error instanceof TypeError) {
-      reportError.value = `Network Error: Could not reach the report server. Please check your connection and the server address. (${error.message})`;
-    }
-    else {
-      reportError.value = "Failed to generate the report due to an unexpected error.";
-    }
-    ElMessage.error(reportError.value);
-  } finally {
-    isGeneratingReport.value = false;
+  }
+  else {
+    tableData.value = [];
+    reportModalVisible.value = false
+    messageBoxContent.value = "Your session has expired. Please log in again.";
+    messageBoxTitle.value = 'Session Invalid';
+    messageBoxType.value = 'error';
+    showMessageBox.value = true;
+    setTimeout(() => {
+      router.push('/');
+    }, 3000)
+    return
   }
 }
 const InputValidation = (selectedValue, inputValue) => {
@@ -298,108 +323,132 @@ const InputValidation = (selectedValue, inputValue) => {
       return false;
     }
   }
-  return true; 
+  return true;
 };
+const InputEmptyValidation =(selectvalue, inputvalue)=>{
+  if(selectvalue===""||inputvalue===""){
+    return true;
+  }
+}
 const searchButton = async () => {
-
+  const isEmpty = InputEmptyValidation(select.value, input.value);
+  if (isEmpty) {
+    messageBoxContent.value = "Please select or input values for search!";
+    messageBoxTitle.value = 'Can not be empty';
+    messageBoxType.value = 'error';
+    showMessageBox.value = true;
+    return;
+  }
   const isValid = InputValidation(select.value, input.value);
   if (!isValid) {
     messageBoxContent.value = "Invalid value entered!";
     messageBoxTitle.value = 'Invalid Value';
     messageBoxType.value = 'error';
     showMessageBox.value = true;
-    return; 
+    return;
   }
   if (!select.value || !input.value) {
     errorMessage.value = 'Please select a search criteria and enter a value.';
     tableData.value = [];
     return;
   }
-
-  let apiUrl = `http://localhost:3001/fsm/consignments/search?${select.value}=${input.value}`;
-  const authToken = JSON.parse(localStorage.getItem("authResponse"))?.token;
-  console.log("authToken: ", authToken);
-  const headers = {
-    'accept': '*/*',
-    'Authorization': `Bearer ${authToken}`,
-  };
-
-  try {
-    const response = await fetch(apiUrl, {
-      headers: headers,
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      console.log("res error: ", error);
-      tableData.value = [];
-      messageBoxContent.value = error.message || 'Failed to fetch data.'
-      messageBoxTitle.value = 'Error';
-      messageBoxType.value = 'error';
-      showMessageBox.value = true;
-      return;
-    }
-    const res = await response.json();
-    console.log("res===> ", res);
-    if (res?.status === 400) {
-      tableData.value = [];
-      messageBoxContent.value = res.message;
-      messageBoxTitle.value = 'Bad Request';
-      messageBoxType.value = 'error';
-      showMessageBox.value = true;
-      return
-    }
-    if (res?.status === 401) {
-      tableData.value = [];
-      messageBoxContent.value = res.message;
-      messageBoxTitle.value = 'Unauthorized';
-      messageBoxType.value = 'error';
-      showMessageBox.value = true;
-      return
-    }
-    if (res?.status === 404) {
-      tableData.value = [];
-      messageBoxContent.value = res.message;
-      messageBoxTitle.value = 'Error';
-      messageBoxType.value = 'error';
-      showMessageBox.value = true;
-      return
-    }
-    if (res?.status === 500) {
-      tableData.value = [];
-      messageBoxContent.value = res.message;
-      messageBoxTitle.value = 'Error';
-      messageBoxType.value = 'error';
-      showMessageBox.value = true;
-      return
-    }
-    if (response?.status >= 500 && response?.status < 600) {
+  const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
+  if (tokenExpiration >= Date.now()) {
+    let apiUrl = `http://localhost:3001/fsm/consignments/search?${select.value}=${input.value}`;
+    const authToken = JSON.parse(localStorage.getItem("authResponse"))?.token;
+    console.log("authToken: ", authToken);
+    const headers = {
+      'accept': '*/*',
+      'Authorization': `Bearer ${authToken}`,
+    };
+    try {
+      const response = await fetch(apiUrl, {
+        headers: headers,
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        console.log("res error: ", error);
         tableData.value = [];
-      messageBoxContent.value = res.message;
-      messageBoxTitle.value = 'Server Error';
-      messageBoxType.value = 'error';
-      showMessageBox.value = true;
-      return
-      } 
-       if (response.status >= 400 && response.status < 500) {
+        messageBoxContent.value = error.message || 'Failed to fetch data.'
+        messageBoxTitle.value = 'Error';
+        messageBoxType.value = 'error';
+        showMessageBox.value = true;
+        return;
+      }
+      const res = await response.json();
+      console.log("res===> ", res);
+      if (res?.status === 400) {
+        tableData.value = [];
+        messageBoxContent.value = res.message;
+        messageBoxTitle.value = 'Bad Request';
+        messageBoxType.value = 'error';
+        showMessageBox.value = true;
+        return
+      }
+      if (res?.status === 401) {
+        tableData.value = [];
+        messageBoxContent.value = res.message;
+        messageBoxTitle.value = 'Unauthorized';
+        messageBoxType.value = 'error';
+        showMessageBox.value = true;
+        return
+      }
+      if (res?.status === 404) {
+        tableData.value = [];
+        messageBoxContent.value = res.message;
+        messageBoxTitle.value = 'Error';
+        messageBoxType.value = 'error';
+        showMessageBox.value = true;
+        return
+      }
+      if (res?.status === 500) {
+        tableData.value = [];
+        messageBoxContent.value = res.message;
+        messageBoxTitle.value = 'Error';
+        messageBoxType.value = 'error';
+        showMessageBox.value = true;
+        return
+      }
+      if (response?.status >= 500 && response?.status < 600) {
+        tableData.value = [];
+        messageBoxContent.value = res.message;
+        messageBoxTitle.value = 'Server Error';
+        messageBoxType.value = 'error';
+        showMessageBox.value = true;
+        return
+      }
+      if (response.status >= 400 && response.status < 500) {
         tableData.value = [];
 
         messageBoxContent.value = res.message;
-      messageBoxTitle.value = 'Client Error';
+        messageBoxTitle.value = 'Client Error';
+        messageBoxType.value = 'error';
+        showMessageBox.value = true;
+        return
+      }
+      const data = res?.data;
+      tableData.value = Array.isArray(data) ? data : [data];
+    } catch (error: any) {
+
+      messageBoxContent.value = error.message || 'An unexpected error occurred.';
+      messageBoxTitle.value = 'Error';
       messageBoxType.value = 'error';
       showMessageBox.value = true;
-      return
-      }
-    const data = res?.data;
-    tableData.value = Array.isArray(data) ? data : [data];
-  } catch (error: any) {
 
-    messageBoxContent.value = error.message || 'An unexpected error occurred.';
-    messageBoxTitle.value = 'Error';
+      tableData.value = [];
+
+    }
+  }
+  else {
+    tableData.value = [];
+    messageBoxContent.value = "Your session has expired. Please log in again.";
+    messageBoxTitle.value = 'Session Invalid';
     messageBoxType.value = 'error';
     showMessageBox.value = true;
-
-    tableData.value = [];
-
+    setTimeout(() => {
+      router.push('/');
+    }, 3000);
+    return
   }
 };
 
@@ -435,22 +484,24 @@ const multipleTableRef = ref<TableInstance | null>(null);
 </script>
 
 <style scoped>
-
-.generate-button{
-  border-color: rgb(0, 155, 131); 
-  background-color: rgb(0, 155, 131); 
+.generate-button {
+  border-color: rgb(0, 155, 131);
+  background-color: rgb(0, 155, 131);
   font-size: 1em;
   color: white;
 }
+
 .generate-button:hover:not(.disabled) {
   background-color: rgb(0, 155, 131);
   transform: translateY(-2px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
-.main-main{
+
+.main-main {
   max-width: 1500px;
   margin: 20px auto;
 }
+
 .back-container {
   padding-left: 5vw;
   display: flex;

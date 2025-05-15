@@ -18,7 +18,7 @@
                status-icon :rules="rules" label-width="auto" class="login-form-container">
                 <div class="login-form">
                     <div style="display: flex; margin-bottom: 24px; gap: 24px;">
-                        <input :error="branchCodeError" v-model="formData.branchCd" @change="validateBranchCode" @keyup.enter="handleSubmit" @keydown="checkDigits" class="form-control" style="width: 21%;" type="text">
+                        <input :error="branchCodeError" v-model="formData.branchCd" @blur="formatBranchCode" prop="branchCd" @change="validateBranchCode" maxlength="4" @keyup.enter="handleSubmit" @keydown="checkDigits" class="form-control" style="width: 21%;" type="text">
                         <input :error="usernameError" v-model="formData.username" @change="validateUsername" @keyup.enter="handleSubmit" class="form-control" maxlength="10" style="width: 75%; margin-right: -62px;" type="password">
                     </div>
                     <div>
@@ -71,6 +71,27 @@ const messageBoxPurpose = ref(null);
 const loading = ref(false);
 const result = ref(null);
 const error = ref(null);
+const maxLength = 4;
+
+const rules = computed(() => ({
+  branchCd: [
+    { required: true, trigger: 'blur' },
+    { min: 4, max: 4, trigger: 'blur' },
+  ],
+  username: [
+    { required: true, trigger: 'blur' },
+  ],
+  password: [
+    { required: true, trigger: 'blur' },
+  ],
+}));
+
+const formatBranchCode = () => {
+  if (formData.branchCd) {
+    formData.branchCd = formData.branchCd.padStart(4, '0');
+  }
+};
+
 
 const isFormFilled = computed(() => {
   return formData.username.trim() !== '' && formData.password.trim() !== '' && formData.branchCd.trim() !== '';

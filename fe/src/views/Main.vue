@@ -39,10 +39,13 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
+
+
+
 
 const handleLogout = () => {
   localStorage.removeItem('authResponse');

@@ -33,12 +33,12 @@
         </div>
       </div>
       <el-dialog v-model="reportModalVisible" title="Generate File Upload History Report" width="30%" center
-        :close-on-click-modal="false" :close-on-press-escape="false">
+        :close-on-click-modal="false" :close-on-press-escape="false" @close="closeModal">
         <div class="modal-content">
           <p>Please select the date range for the report.</p>
           <el-date-picker v-model="fromDatePicker" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
             placeholder="From Date" style="margin-right: 10px; margin-bottom: 10px;" />
-          <el-date-picker v-model="toDatePicker" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
+          <el-date-picker v-model="toDatePicker" :disabled-date="disableToDate" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
             placeholder="To Date" style="margin-right: 10px;" />
           <div v-if="dateErrorMessage" class="error-message">
             {{ dateErrorMessage }}
@@ -49,9 +49,8 @@
         </div>
         <template #footer>
           <span class="dialog-footer">
-            <el-button @click="reportModalVisible = false">Cancel</el-button>
-            <el-button class="generate-button"
-              @click="viewReport" :loading="isGeneratingReport">
+            <el-button @click="closeModal">Cancel</el-button>
+            <el-button class="generate-button" @click="viewReport" :loading="isGeneratingReport">
               {{ isGeneratingReport ? 'Generating...' : 'Generate Report' }}
             </el-button>
           </span>
@@ -139,6 +138,8 @@ import { Loading } from '@element-plus/icons-vue' // Import Loading icon
 const reportModalVisible = ref(false);
 const isGeneratingReport = ref(false);
 const reportError = ref(null);
+const today = new Date();
+
 
 
 
@@ -175,6 +176,9 @@ const dateErrorMessage = ref(null);
 const fromDatePicker = ref(null);
 const toDatePicker = ref(null);
 
+const disableToDate = (date) => {
+  return date > today;
+};
 watch([fromDatePicker, toDatePicker], ([newFromDate, newToDate]) => {
   if (newFromDate && newToDate) {
     const from = new Date(newFromDate);
@@ -189,6 +193,11 @@ watch([fromDatePicker, toDatePicker], ([newFromDate, newToDate]) => {
   }
 });
 
+const closeModal = () => {
+  reportModalVisible.value = false
+  fromDatePicker.value = "";
+  toDatePicker.value = "";
+}
 
 const openReportModal = () => {
   reportModalVisible.value = true;
@@ -206,83 +215,96 @@ const viewReport = async () => {
   }
 
   isGeneratingReport.value = true; // Start loading state
+  const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
+  if (tokenExpiration >= Date.now()) {
+    try {
+      const authToken = JSON.parse(localStorage.getItem("authResponse")).token;
+      const username = JSON.parse(localStorage.getItem("authResponse")).userName;
+      const design = 'cts_report.rptdesign';
+      const format = 'pdf';
+      const fromDate = fromDatePicker.value;
+      const toDate = toDatePicker.value;
+      console.log("username passed for report:", username);
+      const url = `http://localhost:8081/api/data-access/consignment-details/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
 
-  try {
-    const authToken = JSON.parse(localStorage.getItem("authResponse")).token;
-    const username = JSON.parse(localStorage.getItem("authResponse")).userName;
-    const design = 'cts_report.rptdesign';
-    const format = 'pdf';
-    const fromDate = fromDatePicker.value;
-    const toDate = toDatePicker.value;
-    console.log("username passed for report:", username);
-    const url = `http://localhost:8081/api/data-access/consignment-details/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/octet-stream',
-        'Authorization': `Bearer ${authToken}`,
-      }
-    });
-
-    if (!response.ok) {
-      const contentType = response.headers.get('Content-Type');
-      let errorBody = null;
-      try {
-        if (contentType && contentType.includes('application/json')) {
-          errorBody = await response.json();
-        } else {
-          errorBody = await response.text();
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/octet-stream',
+          'Authorization': `Bearer ${authToken}`,
         }
-      } catch (e) {
-        console.error("Error parsing response body", e);
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get('Content-Type');
+        let errorBody = null;
+        try {
+          if (contentType && contentType.includes('application/json')) {
+            errorBody = await response.json();
+          } else {
+            errorBody = await response.text();
+          }
+        } catch (e) {
+          console.error("Error parsing response body", e);
+        }
+        if (response.status === 400 && errorBody && errorBody.message === "No data found for the given date range.") {
+          reportError.value = "No data found for the selected date range.";
+        } else {
+          throw {
+            status: response.status,
+            statusText: response.statusText,
+            message: `HTTP error! Status: ${response.status}`,
+            body: errorBody
+          };
+        }
+        isGeneratingReport.value = false; // End loading state
+        return; // Exit the function if there was an error
       }
-      if (response.status === 400 && errorBody && errorBody.message === "No data found for the given date range.") {
-        reportError.value = "No data found for the selected date range.";
-      } else {
-        throw {
-          status: response.status,
-          statusText: response.statusText,
-          message: `HTTP error! Status: ${response.status}`,
-          body: errorBody
-        };
+
+      const reportBlob = await response.blob();
+
+      if (reportBlob.size === 0) {
+        reportError.value = "The generated report is empty. Please check the date range.";
+        isGeneratingReport.value = false; // End loading state
+        return; // Exit if the blob is empty
       }
+
+
+      const blob = new Blob([reportBlob], { type: 'application/pdf' });
+      const fileURL = URL.createObjectURL(blob);
+
+      window.open(fileURL, '_blank');
+
+      reportModalVisible.value = false;
+
+    } catch (error) {
+      console.error("Error fetching report:", error);
       isGeneratingReport.value = false; // End loading state
-      return; // Exit the function if there was an error
+      if (error && error.status === 401) {
+        reportError.value = "Unauthorized: Your session may have expired or you lack permission. Please log in again.";
+      } else if (error && error.status) {
+        reportError.value = `Failed to generate the report. Server responded with status ${error.status}: ${error.statusText}.`;
+      } else if (error instanceof TypeError) {
+        reportError.value = `Network Error: Could not reach the report server. Please check your connection and the server address. (${error.message})`;
+      }
+      else {
+        reportError.value = "Failed to generate the report due to an unexpected error.";
+      }
+      ElMessage.error(reportError.value); // Show Element Plus error message
+    } finally {
+      isGeneratingReport.value = false; // Ensure loading state is turned off
     }
-
-    const reportBlob = await response.blob();
-
-    if (reportBlob.size === 0) {
-      reportError.value = "The generated report is empty. Please check the date range.";
-      isGeneratingReport.value = false; // End loading state
-      return; // Exit if the blob is empty
-    }
-
-
-    const blob = new Blob([reportBlob], { type: 'application/pdf' });
-    const fileURL = URL.createObjectURL(blob);
-
-    window.open(fileURL, '_blank');
-
-    reportModalVisible.value = false;
-
-  } catch (error) {
-    console.error("Error fetching report:", error);
-    isGeneratingReport.value = false; // End loading state
-    if (error && error.status === 401) {
-      reportError.value = "Unauthorized: Your session may have expired or you lack permission. Please log in again.";
-    } else if (error && error.status) {
-      reportError.value = `Failed to generate the report. Server responded with status ${error.status}: ${error.statusText}.`;
-    } else if (error instanceof TypeError) {
-      reportError.value = `Network Error: Could not reach the report server. Please check your connection and the server address. (${error.message})`;
-    }
-    else {
-      reportError.value = "Failed to generate the report due to an unexpected error.";
-    }
-    ElMessage.error(reportError.value); // Show Element Plus error message
-  } finally {
-    isGeneratingReport.value = false; // Ensure loading state is turned off
+  } else {
+    tableData.value = [];
+    reportModalVisible.value = false
+    messageBoxContent.value = "Your session has expired. Please log in again.";
+    messageBoxTitle.value = 'Session Invalid';
+    messageBoxType.value = 'error';
+    showMessageBox.value = true;
+    setTimeout(() => {
+      router.push('/');
+    }, 3000)
+    return
   }
 }
 const onDragOver = (event) => {
@@ -360,7 +382,10 @@ const processFiles = (files) => {
 
   // Basic file type and size validation
   if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-    errorMessage.value = 'Invalid file type. Please upload a CSV file.';
+    messageBoxContent.value = 'Invalid file type. Please upload a CSV file.';
+    messageBoxTitle.value = 'Invalid file type';
+    messageBoxType.value = 'error';
+    showMessageBox.value = true;
     // Reset other state variables
     fileName.value = '';
     tableData.value = [];
@@ -732,69 +757,82 @@ const headers = {
 
 const makeApiRequest = async (url, method, headers, body = null) => {
   isLoading.value = true;
-  try {
-    console.log(`Making API request: ${method} ${url}`);
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : null,
-    });
+  const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
+  if (tokenExpiration >= Date.now()) {
+    try {
+      console.log(`Making API request: ${method} ${url}`);
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : null,
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
 
-      let errorBody;
-      let errorMessage = `HTTP error! Status: ${response.status}`;
-      let errorDetails = null;
+        let errorBody;
+        let errorMessage = `HTTP error! Status: ${response.status}`;
+        let errorDetails = null;
 
-      try {
-        errorBody = await response.text();
-        if (response.headers.get("content-type")?.includes("application/json")) {
-          errorDetails = JSON.parse(errorBody);
-          errorMessage = errorDetails.message || errorDetails.error?.message || errorBody || `Error: ${response.status}`;
-          console.log("API Error Response (JSON):", errorDetails);
-        } else {
-          errorMessage = errorBody || `Error: ${response.status}`;
-          console.log("API Error Response (Text):", errorBody);
+        try {
+          errorBody = await response.text();
+          if (response.headers.get("content-type")?.includes("application/json")) {
+            errorDetails = JSON.parse(errorBody);
+            errorMessage = errorDetails.message || errorDetails.error?.message || errorBody || `Error: ${response.status}`;
+            console.log("API Error Response (JSON):", errorDetails);
+          } else {
+            errorMessage = errorBody || `Error: ${response.status}`;
+            console.log("API Error Response (Text):", errorBody);
+          }
+        } catch (e) {
+          console.error("Error reading or parsing API error body:", e);
+          errorMessage = `HTTP error! Status: ${response.status}. Could not read error details.`;
         }
-      } catch (e) {
-        console.error("Error reading or parsing API error body:", e);
-        errorMessage = `HTTP error! Status: ${response.status}. Could not read error details.`;
+
+        const apiError = new Error(errorMessage);
+        apiError.status = response.status;
+        apiError.statusText = response.statusText;
+        apiError.details = errorDetails || errorBody;
+
+        console.error("API Request failed:", apiError);
+        throw apiError;
+
       }
 
-      const apiError = new Error(errorMessage);
-      apiError.status = response.status;
-      apiError.statusText = response.statusText;
-      apiError.details = errorDetails || errorBody;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await response.json();
+        console.log("API Response (Success - JSON):", data);
+        return data;
+      } else {
+        console.log("API Response (Success - No JSON or other type):", response.status, response.statusText);
+        // Return a default success structure if API returns non-JSON or empty body on success
+        return { message: `Operation successful (Status: ${response.status})`, data: [], accepted_count: 0, rejected_count: 0 };
+      }
 
-      console.error("API Request failed:", apiError);
-      throw apiError;
 
+    } catch (error) {
+      console.error("API Request encountered an exception:", error);
+      if (error.status !== undefined) {
+        throw error;
+      } else {
+        const networkError = new Error(`Network or unexpected error during API call: ${error.message || 'Unknown network error'}`);
+        networkError.originalError = error;
+        console.error("Network Error:", networkError);
+        throw networkError;
+      }
+    } finally {
+      isLoading.value = false;
     }
-
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
-      const data = await response.json();
-      console.log("API Response (Success - JSON):", data);
-      return data;
-    } else {
-      console.log("API Response (Success - No JSON or other type):", response.status, response.statusText);
-      // Return a default success structure if API returns non-JSON or empty body on success
-      return { message: `Operation successful (Status: ${response.status})`, data: [], accepted_count: 0, rejected_count: 0 };
-    }
-
-
-  } catch (error) {
-    console.error("API Request encountered an exception:", error);
-    if (error.status !== undefined) {
-      throw error;
-    } else {
-      const networkError = new Error(`Network or unexpected error during API call: ${error.message || 'Unknown network error'}`);
-      networkError.originalError = error;
-      console.error("Network Error:", networkError);
-      throw networkError;
-    }
-  } finally {
-    isLoading.value = false;
+  } else {
+    tableData.value = [];
+    messageBoxContent.value = "Your session has expired. Please log in again.";
+    messageBoxTitle.value = 'Session Invalid';
+    messageBoxType.value = 'error';
+    showMessageBox.value = true;
+    setTimeout(() => {
+      router.push('/');
+    }, 3000);
+    return;
   }
 };
 const handleMessageBoxClose = () => {
@@ -834,99 +872,107 @@ const handleMessageBoxClose = () => {
 const triggerAcceptApiCall = async (dataArray) => {
   console.log("Starting API call for accepted data...");
 
-  // These counts and row lists should reflect the *result* of the frontend validation
-  // acceptedRows.value and rejectedRows.value are populated during the acceptAllData validation loop
+
   const acceptCountValidated = acceptedRows.value.length;
   const rejectCountValidated = rejectedRows.value.length;
 
   const rejectedRowsParam = rejectedRows.value.length > 0
-    ? JSON.stringify(rejectedRows.value.map(index => index + 1)) // API likely expects 1-based indexing
-    : "[]"; // Send empty array string if none rejected
+    ? JSON.stringify(rejectedRows.value.map(index => index + 1))
+    : "[]"; 
   const acceptedRowsParam = acceptedRows.value.length > 0
-    ? JSON.stringify(acceptedRows.value.map(index => index + 1)) // API likely expects 1-based indexing
-    : "[]"; // Send empty array string if none accepted
+    ? JSON.stringify(acceptedRows.value.map(index => index + 1)) 
+    : "[]"; 
 
 
   const fileType = file_id === 1 ? "Shipment letter" : file_id === 2 ? "Delivered letter" : file_id === 3 ? "Returned letter" : "Invalid file type!";
 
   const params = new URLSearchParams({
     fileName: fileName.value,
-    userId: roleId, // Assuming roleId is the correct user identifier
+    userId: roleId,
     recordCount: total_record,
-    // These counts passed as params might be redundant if the API calculates from the body/row lists,
-    // but matching previous logic. The counts in the response body are the most reliable.
     accept_record_count: acceptCountValidated,
     reject_record_count: rejectCountValidated,
     uploadedBy: uploadedBy,
     fileType: fileType
   });
 
-  // Append row indices only if there are any
-  if (rejectedRows.value.length > 0) params.append('rejectedRows', rejectedRowsParam);
-  if (acceptedRows.value.length > 0) params.append('acceptedRows', acceptedRowsParam);
+  if (rejectedRows.value.length > 0) 
+  {params.append('rejectedRows', rejectedRowsParam);}
+  else{
+    params.append('rejectedRows', '[]');
+  }
+  if (acceptedRows.value.length > 0) 
+  {
+    params.append('acceptedRows', acceptedRowsParam);
+  }else{
+    params.append('acceptedRows', '[]');
+
+  }
 
 
   const acceptUrl = `${apiUrl}accept?${params.toString()}`;
   console.log("Accept API URL:", acceptUrl);
   console.log("Data being sent to Accept API:", dataArray);
 
+  const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
+  if (tokenExpiration >= Date.now()) {
+    try {
+      const data = await makeApiRequest(acceptUrl, "POST", headers, dataArray);
 
-  try {
-    const data = await makeApiRequest(acceptUrl, "POST", headers, dataArray);
+      apiResponseData.value = data;
+      apiErrorMessage.value = null;
 
-    apiResponseData.value = data;
-    apiErrorMessage.value = null;
+      messageBoxTitle.value = "Upload Result";
+      messageBoxType.value = "success";
+      console.log("====> API Response Data Length: ", data.data ? data.data.length : 0);
 
-    messageBoxTitle.value = "Upload Result";
-    messageBoxType.value = "success";
-    console.log("====> API Response Data Length: ", data.data ? data.data.length : 0);
-
-    // Use counts from API response if available, otherwise use frontend validated counts
-    const apiMessage = data.message || 'Process completed successfully.';
-    const finalAcceptedCount = data.data !== undefined ? data.data.length : acceptCountValidated;
-    const finalRejectedCount = data.data !== undefined ? (total_record - finalAcceptedCount) : rejectCountValidated;
+      const apiMessage = data.message || 'Process completed successfully.';
+      const finalAcceptedCount = data.data !== undefined ? data.data.length : acceptCountValidated;
+      const finalRejectedCount = data.data !== undefined ? (total_record - finalAcceptedCount) : rejectCountValidated;
 
 
-    // Constructing a more informative message
-    let successMessage = `${apiMessage}<br>`;
+      let successMessage = `${apiMessage}<br>`;
 
-    if (validationErrors.value.length > 0) {
-      // If there were validation errors but some data was accepted
-      successMessage += `Some records had validation errors and were not processed.<br>`;
-      successMessage += `accepted: ${finalAcceptedCount} records.<br>`;
-      successMessage += `Total records in file: ${total_record}.`;
-    } else {
-      // If no validation errors or all passed validation
-      successMessage += `accepted: ${finalAcceptedCount} records.<br>`;
-      successMessage += `rejected: ${finalRejectedCount} records.<br>`;
-      successMessage += `Total records in file: ${total_record}.`;
+      if (validationErrors.value.length > 0) {
+        successMessage += `Some records had validation errors and were not processed.<br>`;
+        successMessage += `accepted: ${finalAcceptedCount} records.<br>`;
+        successMessage += `Total records in file: ${total_record}.`;
+      } else {
+        successMessage += `accepted: ${finalAcceptedCount} records.<br>`;
+        successMessage += `rejected: ${finalRejectedCount} records.<br>`;
+        successMessage += `Total records in file: ${total_record}.`;
+      }
+
+
+      messageBoxContent.value = successMessage;
+
+      messageBoxPurpose.value = 'apiResponse';
+      showMessageBox.value = true;
+
+
+
+    } catch (error) {
+      apiResponseData.value = null;
+      apiErrorMessage.value = error.message || 'An unknown error occurred during acceptance.';
+
+      messageBoxTitle.value = "Upload Failed";
+      messageBoxType.value = "error";
+      messageBoxContent.value = apiErrorMessage.value;
+
+      messageBoxPurpose.value = 'apiResponse'; // Indicate this is an API response message
+      showMessageBox.value = true;
+    } finally {
+      dataToSendToApi.value = [];
+      validationErrors.value = [];
     }
-
-
-    messageBoxContent.value = successMessage;
-
-    messageBoxPurpose.value = 'apiResponse'; // Indicate this is an API response message
+  } else {
+    tableData.value = [];
+    messageBoxContent.value = "Your session has expired. Please log in again.";
+    messageBoxTitle.value = 'Session Invalid';
+    messageBoxType.value = 'error';
     showMessageBox.value = true;
-
-    // Reset state regardless of whether all data was accepted or some were rejected by API
-    // The message box informs the user of the outcome.
-    // resetAfterProcess(); // Reset happens after message box is closed
-
-
-  } catch (error) {
-    apiResponseData.value = null;
-    apiErrorMessage.value = error.message || 'An unknown error occurred during acceptance.';
-
-    messageBoxTitle.value = "Upload Failed";
-    messageBoxType.value = "error";
-    messageBoxContent.value = apiErrorMessage.value;
-
-    messageBoxPurpose.value = 'apiResponse'; // Indicate this is an API response message
-    showMessageBox.value = true;
-  } finally {
-    // Clear the dataToSendToApi and validation errors after the attempt
-    dataToSendToApi.value = [];
-    validationErrors.value = []; // Clear validation errors here as they've been displayed or processed
+    next({ name: 'Login' });
+    return
   }
 };
 
@@ -993,12 +1039,10 @@ const rejectAllData = async () => {
   const acceptCountToSend = 0; // 0 accepted when rejecting all
   const rejectCountToSend = total_record; // All rows rejected
 
-  // Prepare params for API. Assuming API expects 1-based indexing for row numbers.
   const rejectedRowsParam = rejectedRows.value.length > 0
-    ? JSON.stringify(rejectedRows.value.map(index => index + 1)) // Convert 0-based to 1-based
-    : "[]"; // Send empty array string if none rejected (though unlikely here)
+    ? JSON.stringify(rejectedRows.value.map(index => index + 1)) 
+    : "[]"; 
 
-  // acceptedRowsParam will be "[]" as acceptedRows is empty
 
   const fileType = file_id === 1 ? "Shipment letter" : file_id === 2 ? "Delivered letter" : file_id === 3 ? "Returned letter" : "Invalid file type!";
 
@@ -1013,59 +1057,70 @@ const rejectAllData = async () => {
   });
 
   if (rejectedRows.value.length > 0) params.append('rejectedRows', rejectedRowsParam);
-  // No need to append acceptedRowsParam as it will be empty
-
+  params.append('acceptedRows','[]');
   const rejectUrl = `${apiUrl}reject?${params.toString()}`;
   console.log("Reject URL:", rejectUrl);
+  const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
+  if (tokenExpiration >= Date.now()) {
+    try {
+      const data = await makeApiRequest(rejectUrl, "POST", headers);
 
-  try {
-    const data = await makeApiRequest(rejectUrl, "POST", headers);
+      apiResponseData.value = data;
+      apiErrorMessage.value = null;
 
-    apiResponseData.value = data;
-    apiErrorMessage.value = null;
-
-    messageBoxTitle.value = "Rejection Result";
-    messageBoxType.value = "success";
-    // Display feedback based on the rejection action
-    const apiMessage = data.message || `Successfully rejected ${total_record} records.`;
-    messageBoxContent.value = `${apiMessage}<br>Total rejected: ${total_record}<br>Total accepted: 0<br>Total records in file: ${total_record}.`;
-
-
-    messageBoxPurpose.value = 'apiResponse';
-    showMessageBox.value = true;
+      messageBoxTitle.value = "Rejection Result";
+      messageBoxType.value = "success";
+      // Display feedback based on the rejection action
+      const apiMessage = data.message || `Successfully rejected ${total_record} records.`;
+      messageBoxContent.value = `${apiMessage}<br>Total rejected: ${total_record}<br>Total accepted: 0<br>Total records in file: ${total_record}.`;
 
 
-  } catch (error) {
-    apiResponseData.value = null;
-    if (error && error.status === 401) {
-      messageBoxTitle.value = "Unauthorized";
-      messageBoxType.value = "error";
-      apiErrorMessage.value = "Unauthorized: Your session may have expired or you lack permission. Please log in again.";
-    } else if (error && error.status) {
-      messageBoxType.value = "error";
+      messageBoxPurpose.value = 'apiResponse';
+      showMessageBox.value = true;
+
+
+    } catch (error) {
+      apiResponseData.value = null;
+      if (error && error.status === 401) {
+        messageBoxTitle.value = "Unauthorized";
+        messageBoxType.value = "error";
+        apiErrorMessage.value = "Unauthorized: Your session may have expired or you lack permission. Please log in again.";
+      } else if (error && error.status) {
+        messageBoxType.value = "error";
+        messageBoxTitle.value = "Rejection Failed";
+        apiErrorMessage.value = `Failed to generate the report. Server responded with status ${error.status}: ${error.statusText}.`;
+      } else if (error instanceof TypeError) {
+        messageBoxType.value = "error";
+        messageBoxTitle.value = "Rejection Failed";
+        apiErrorMessage.value = `Network Error: Could not reach the report server. Please check your connection and the server address. (${error.message})`;
+      }
+      else {
+        messageBoxType.value = "error";
+        apiErrorMessage.value = "Failed to generate the report due to an unexpected error.";
+      }
+      apiErrorMessage.value = error.message || 'An unknown error occurred during rejection.';
+
       messageBoxTitle.value = "Rejection Failed";
-      apiErrorMessage.value = `Failed to generate the report. Server responded with status ${error.status}: ${error.statusText}.`;
-    } else if (error instanceof TypeError) {
       messageBoxType.value = "error";
-      messageBoxTitle.value = "Rejection Failed";
-      apiErrorMessage.value = `Network Error: Could not reach the report server. Please check your connection and the server address. (${error.message})`;
-    }
-    else {
-      messageBoxType.value = "error";
-      apiErrorMessage.value = "Failed to generate the report due to an unexpected error.";
-    }
-    apiErrorMessage.value = error.message || 'An unknown error occurred during rejection.';
+      messageBoxContent.value = apiErrorMessage.value;
 
-    messageBoxTitle.value = "Rejection Failed";
-    messageBoxType.value = "error";
-    messageBoxContent.value = apiErrorMessage.value;
-
-    messageBoxPurpose.value = 'apiResponse';
+      messageBoxPurpose.value = 'apiResponse';
+      showMessageBox.value = true;
+    } finally {
+      isLoading.value = false; // Ensure loading is turned off
+      // Reset state after the API response (success or failure)
+      // resetAfterProcess(); // Reset happens after message box is closed
+    }
+  } else {
+    tableData.value = [];
+    messageBoxContent.value = "Your session has expired. Please log in again.";
+    messageBoxTitle.value = 'Session Invalid';
+    messageBoxType.value = 'error';
     showMessageBox.value = true;
-  } finally {
-    isLoading.value = false; // Ensure loading is turned off
-    // Reset state after the API response (success or failure)
-    // resetAfterProcess(); // Reset happens after message box is closed
+    setTimeout(() => {
+      router.push('/');
+    }, 3000);
+    return;
   }
 };
 
@@ -1236,17 +1291,19 @@ const acceptAllData = async () => {
   transform: translateY(-3px);
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
 }
+
 .upload-button-container {
   display: flex;
   justify-content: space-between;
 }
 
-.generate-button{
-  border-color: rgb(0, 155, 131); 
-  background-color: rgb(0, 155, 131); 
+.generate-button {
+  border-color: rgb(0, 155, 131);
+  background-color: rgb(0, 155, 131);
   font-size: 1em;
   color: white;
 }
+
 .generate-button:hover:not(.disabled) {
   background-color: rgb(0, 155, 131);
   transform: translateY(-2px);
@@ -1579,6 +1636,7 @@ const acceptAllData = async () => {
   max-width: none;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
+
 .custom-button:hover:not(.disabled) {
   background-color: rgb(0, 155, 131);
   transform: translateY(-2px);

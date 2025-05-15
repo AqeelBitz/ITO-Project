@@ -183,11 +183,8 @@ button {
   cursor: pointer;
 }
 
-/* Media Queries for larger screens */
 @media (min-width: 768px) {
-  .upload-page-container {
-    /* padding: 20px; */
-  }
+
 
   .heading h1 {
     font-size: 2em;

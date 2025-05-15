@@ -9,6 +9,7 @@ onMounted(() => {
  if (!isLoggedIn && router.currentRoute.value.name !== 'Login') {
    router.push('/');
  }
+ 
 });
 </script>
 
