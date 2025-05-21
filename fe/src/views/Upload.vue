@@ -38,8 +38,8 @@
           <p>Please select the date range for the report.</p>
           <el-date-picker v-model="fromDatePicker" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
             placeholder="From Date" style="margin-right: 10px; margin-bottom: 10px;" />
-          <el-date-picker v-model="toDatePicker" :disabled-date="disableToDate" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
-            placeholder="To Date" style="margin-right: 10px;" />
+          <el-date-picker v-model="toDatePicker" :disabled-date="disableToDate" type="date" format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD" placeholder="To Date" style="margin-right: 10px;" />
           <div v-if="dateErrorMessage" class="error-message">
             {{ dateErrorMessage }}
           </div>
@@ -145,10 +145,8 @@ const today = new Date();
 
 const router = useRouter();
 
-const errorMessage = ref(null); // For initial file/parsing errors
-const multipleTableRef = ref(null);
+const errorMessage = ref(null);
 const multipleSelection = ref([]);
-// Initialize tableData as empty array, the placeholder message is handled in template now
 const tableData = ref([]);
 const showMessageBox = ref(false);
 const messageBoxContent = ref('');
@@ -162,7 +160,7 @@ const dataToSendToApi = ref([]);
 const validationErrors = ref([]);
 const rejectedRows = ref([]);
 const acceptedRows = ref([]);
-const isDragging = ref(false); // Corrected: Should be ref(false)
+const isDragging = ref(false); 
 
 
 let file_id = 0;
@@ -175,7 +173,248 @@ const mappedObjects = ref([]);
 const dateErrorMessage = ref(null);
 const fromDatePicker = ref(null);
 const toDatePicker = ref(null);
+const validationRules = {
+  consignment_id: {
+    required: true,
+    type: 'number',
+    pattern: /^\d+$/, // Only digits, no decimals
+    minLength: 1,
+    maxLength: 20
+  },
+  courier: {
+    required: true,
+    type: 'string',
+    minLength: 2,
+    maxLength: 50,
+    pattern: /^[a-zA-Z\s.-]+$/ // Alphabetic, spaces, dots, hyphens
+  },
+  // booking_date: Validation for dates is excluded
+  account_no: {
+    required: true,
+    type: 'string',
+    minLength: 17,
+    maxLength: 17,
+    pattern: /^\d{17}$/ // Exactly 17 digits for Bank Al Habib
+  },
+  account_title: {
+    required: true,
+    type: 'string',
+    minLength: 3,
+    maxLength: 100,
+    pattern: /^[a-zA-Z0-9\s.&'-]+$/ // Alphanumeric, spaces, common symbols
+  },
+  receiver_cnic: {
+    required: true,
+    type: 'string',
+    minLength: 13,
+    maxLength: 13,
+    pattern: /^\d{13}$/ // Exactly 13 digits (no dashes for standard input)
+  },
+  shipping_bill: {
+    required: false, // Assuming optional
+    type: 'string',
+    maxLength: 50,
+    pattern: /^[a-zA-Z0-9\s-]+$/ // Alphanumeric, spaces, hyphens
+  },
+  address: {
+    required: true,
+    type: 'string',
+    minLength: 5,
+    maxLength: 255
+  },
+  city: {
+    required: true,
+    type: 'string',
+    minLength: 2,
+    maxLength: 50,
+    pattern: /^[a-zA-Z\s-]+$/ // Alphabetic characters, spaces, hyphens
+  },
+  email: {
+    required: false, // Email is often optional
+    type: 'string',
+    maxLength: 100,
+    pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ // Basic email regex
+  },
+  mobile_no: {
+    required: true,
+    type: 'string',
+    minLength: 11, // e.g., 03XXYYYYYYY
+    maxLength: 11,
+    pattern: /^03\d{9}$/ // Basic Pakistani mobile number format (starts with 03)
+  },
+  letter_type: {
+    required: true,
+    type: 'string',
+    minLength: 2,
+    maxLength: 50,
+    pattern: /^[a-zA-Z0-9\s-]+$/ // Example: "Debit Card", "Cheque Book"
+  },
+  card_no: {
+    required: true,
+    type: 'string',
+    minLength: 16, // Standard card number length
+    maxLength: 16,
+    pattern: /^\d{16}$/ // Only digits for card number (e.g., PAN)
+  },
+  card_type: {
+    required: true,
+    type: 'string',
+    minLength: 2,
+    maxLength: 50,
+    allowedValues: ['Debit', 'Credit', 'Prepaid'] // Example whitelist
+  },
+  // card_creation_date: Validation for dates is excluded
+  return_reason: {
+    required: false,
+    type: 'string',
+    maxLength: 200,
+    pattern: /^[a-zA-Z0-9\s.,'()-]+$/ // Common text characters
+  },
+  // return_date: Validation for dates is excluded
+  branch_cd: {
+    required: true,
+    type: 'string',
+    minLength: 4, // Typically 4 digits for branch code in Pakistan
+    maxLength: 4,
+    pattern: /^\d{4}$/ // Exactly 4 digits
+  },
+  receiver_name_b: {
+    required: false, // Assuming "B" might be an alternative/optional name
+    type: 'string',
+    minLength: 3,
+    maxLength: 100,
+    pattern: /^[a-zA-Z\s.-]+$/ // Alphabetic, spaces, dots, hyphens
+  },
+  // delivery_date: Validation for dates is excluded
+  status: {
+    required: true,
+    type: 'string',
+    minLength: 2,
+    maxLength: 50,
+    allowedValues: ['Delivered', 'Pending', 'Returned', 'Cancelled', 'In Transit', 'Held'] // Example statuses
+  },
+  receiver_name_d: {
+    required: false, // Assuming "D" might be an alternative/optional name
+    type: 'string',
+    minLength: 3,
+    maxLength: 100,
+    pattern: /^[a-zA-Z\s.-]+$/
+  },
+  relationship: {
+    required: false,
+    type: 'string',
+    maxLength: 50,
+    pattern: /^[a-zA-Z\s-]+$/ // e.g., "Self", "Parent", "Spouse"
+  },
+  card_status: {
+    required: true,
+    type: 'string',
+    minLength: 2,
+    maxLength: 50,
+    allowedValues: ['Active', 'Inactive', 'Blocked', 'Issued', 'Dispatched'] // Example card statuses
+  },
+  customer_cnic_number: {
+    required: true,
+    type: 'string',
+    minLength: 13,
+    maxLength: 13,
+    pattern: /^\d{13}$/ // Exactly 13 digits
+  }
+};
+const validateRow = (rowData, rowIndex) => {
+  const errors = [];
 
+  for (const mappedColumnName in validationRules) {
+    const rules = validationRules[mappedColumnName];
+    let value = rowData[mappedColumnName];
+
+    // Trim string values for consistent validation
+    if (typeof value === 'string') {
+      value = value.trim();
+    }
+
+    // 1. Handle Required fields
+    if (rules.required && (value === null || value === undefined || value === '')) {
+      errors.push({
+        rowIndex,
+        columnName: mappedColumnName,
+        value: value,
+        message: 'is required.'
+      });
+      continue; // Skip further validation for this field if it's missing and required
+    }
+
+    // If not required and empty, no further validation for this field
+    if (!rules.required && (value === null || value === undefined || value === '')) {
+        continue;
+    }
+
+    // 2. Type and Pattern Validation
+    switch (rules.type) {
+      case 'number':
+        // Check if it's a valid number AND matches the pattern (e.g., only digits)
+        if (isNaN(value) || !rules.pattern.test(String(value))) { // Convert value to string for regex test
+          errors.push({
+            rowIndex,
+            columnName: mappedColumnName,
+            value: value,
+            message: 'must be a valid number and contain only digits.'
+          });
+        } else {
+          // Convert to actual number if validation passed, for consistency
+          rowData[mappedColumnName] = Number(value);
+        }
+        break;
+      case 'string':
+        if (typeof value !== 'string') {
+          errors.push({
+            rowIndex,
+            columnName: mappedColumnName,
+            value: value,
+            message: 'must be a string.'
+          });
+          continue; // Prevent further string checks if not a string
+        } else {
+          if (rules.minLength && value.length < rules.minLength) {
+            errors.push({
+              rowIndex,
+              columnName: mappedColumnName,
+              value: value,
+              message: `must be at least ${rules.minLength} characters long.`
+            });
+          }
+          if (rules.maxLength && value.length > rules.maxLength) {
+            errors.push({
+              rowIndex,
+              columnName: mappedColumnName,
+              value: value,
+              message: `cannot exceed ${rules.maxLength} characters.`
+            });
+          }
+          if (rules.pattern && !rules.pattern.test(value)) {
+            errors.push({
+              rowIndex,
+              columnName: mappedColumnName,
+              value: value,
+              message: 'contains invalid characters or has an incorrect format.'
+            });
+          }
+          // Check for allowed values (e.g., for enums like 'status' or 'card_type')
+          if (rules.allowedValues && !rules.allowedValues.includes(value)) {
+              errors.push({
+                rowIndex,
+                columnName: mappedColumnName,
+                value: value,
+                message: `is not an allowed value. Expected one of: ${rules.allowedValues.map(v => `'${v}'`).join(', ')}.`
+              });
+          }
+        }
+        break;
+      // Date type is intentionally excluded here
+    }
+  }
+  return errors;
+};
 const disableToDate = (date) => {
   return date > today;
 };
@@ -225,7 +464,7 @@ const viewReport = async () => {
       const fromDate = fromDatePicker.value;
       const toDate = toDatePicker.value;
       console.log("username passed for report:", username);
-      const url = `http://localhost:8081/api/data-access/consignment-details/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
+      const url = `http://10.51.41.26:8081/api/data-access/consignment-details/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -290,7 +529,7 @@ const viewReport = async () => {
       else {
         reportError.value = "Failed to generate the report due to an unexpected error.";
       }
-      ElMessage.error(reportError.value); // Show Element Plus error message
+      // ElMessage.error(reportError.value); // Show Element Plus error message
     } finally {
       isGeneratingReport.value = false; // Ensure loading state is turned off
     }
@@ -366,7 +605,6 @@ const goBack = () => {
   router.push('/main');
 }
 
-// Modified to be used by both el-upload and drag-and-drop
 const processFiles = (files) => {
   // This function processes a FileList (from drag/drop) or a single File (from el-upload)
   // Need to normalize input to always be an array-like list of File objects
@@ -447,7 +685,10 @@ const processFiles = (files) => {
 
           if (validCsvHeaders.length === 0) {
             console.log("CSV file has headers but they are all empty or invalid.");
-            errorMessage.value = "CSV file has invalid headers. Please ensure headers are correct.";
+            messageBoxContent.value = "CSV file has invalid headers. Please ensure headers are correct.";
+            messageBoxTitle.value = 'CSV file has invalid headers.';
+            messageBoxType.value = 'error';
+            showMessageBox.value = true;
             tableData.value = [];
             columns.value = [];
             mappedObjects.value = [];
@@ -480,7 +721,10 @@ const processFiles = (files) => {
           else {
             file_id = 0;
             console.log("Detected File Type: Invalid (unexpected number of columns: " + validCsvHeaders.length + ")");
-            errorMessage.value = `Invalid file format: Expected 7, 8, or 16 columns, but found ${validCsvHeaders.length}. Please upload a valid template.`;
+            messageBoxContent.value = `Invalid file format: Expected 7, 8, or 16 columns, but found ${validCsvHeaders.length}. Please upload a valid template.`;
+            messageBoxTitle.value = 'Invalid file format';
+            messageBoxType.value = 'error';
+            showMessageBox.value = true;
             tableData.value = [];
             columns.value = [];
             mappedObjects.value = [];
@@ -494,13 +738,19 @@ const processFiles = (files) => {
           mappedObjects.value = [];
           total_record = 0;
           console.log("CSV file is empty or contains no data rows.");
-          errorMessage.value = "CSV file is empty or contains no data rows.";
-          // Keep file name to show the file was selected but empty
+          messageBoxContent.value = "CSV file is empty or contains no data rows.";
+          messageBoxTitle.value = 'Empty file';
+          messageBoxType.value = 'error';
+          showMessageBox.value = true;
+
         }
       },
       error: (error) => {
         console.log('CSV parsing error:', error);
-        errorMessage.value = `CSV parsing error: ${error.message}`;
+        messageBoxContent.value = `CSV parsing error: ${error.message}`;
+        messageBoxTitle.value = 'error parsing csv';
+        messageBoxType.value = 'error';
+        showMessageBox.value = true;
         mappedObjects.value = [];
         tableData.value = [];
         columns.value = [];
@@ -513,6 +763,10 @@ const processFiles = (files) => {
   reader.onerror = (error) => {
     console.log('File reading error:', error);
     errorMessage.value = `File reading error: ${error}`;
+    messageBoxContent.value = `File reading error: ${error}`;
+        messageBoxTitle.value = 'Unable to read file';
+        messageBoxType.value = 'error';
+        showMessageBox.value = true;
     mappedObjects.value = [];
     tableData.value = [];
     columns.value = [];
@@ -524,14 +778,14 @@ const processFiles = (files) => {
 };
 
 
-// Modify handleFileChange to use the new processFiles function
 const handleFileChange = (uploadFile) => {
-  // el-upload gives an object with a `raw` property containing the File object
   if (uploadFile && uploadFile.raw) {
     processFiles(uploadFile.raw);
   } else {
-    errorMessage.value = 'File is not properly loaded from upload input.';
-    // Reset other state variables
+    messageBoxContent.value = 'File is not properly loaded from upload input.';
+        messageBoxTitle.value = 'Unable to load file';
+        messageBoxType.value = 'error';
+        showMessageBox.value = true;
     fileName.value = '';
     tableData.value = [];
     columns.value = [];
@@ -547,9 +801,6 @@ const handleFileChange = (uploadFile) => {
 
 
 const triggerFileUpload = () => {
-  // This finds the hidden file input created by el-upload and clicks it.
-  // It does NOT handle the drag/drop area click directly anymore,
-  // as the drag/drop area has its own @click handler that calls triggerFileUpload.
   if (uploadRef.value) {
     // Ensure uploadRef.value exists and has the correct structure
     const fileInput = uploadRef.value.$el?.querySelector('input[type="file"]') || uploadRef.value.$refs.input?.$el?.querySelector('input[type="file"]');
@@ -563,12 +814,18 @@ const triggerFileUpload = () => {
         fallbackInput.click();
       } else {
         console.error("Fallback file input element also not found.");
-        errorMessage.value = "Unable to open file selection dialog.";
+        messageBoxContent.value = "Unable to open file selection dialog.";
+        messageBoxTitle.value = 'Unable to open dialog';
+        messageBoxType.value = 'error';
+        showMessageBox.value = true;
       }
     }
   } else {
     console.error("uploadRef is not available.");
-    errorMessage.value = "Upload component not initialized correctly.";
+    messageBoxContent.value = "Upload component not initialized correctly.";
+        messageBoxTitle.value = 'Error in upload component';
+        messageBoxType.value = 'error';
+        showMessageBox.value = true;
   }
 };
 
@@ -679,11 +936,6 @@ const formatDate = (dateString) => {
   return null; // Indicate invalid format
 };
 
-
-const handleSelectionChange = (val) => {
-  multipleSelection.value = val;
-};
-
 const createMappedObjects = (headers, data) => {
   const mapped = [];
   data.forEach((row, index) => {
@@ -704,7 +956,6 @@ const formatValidationErrorMessage = (errors) => {
   if (errors.length === 0) return "";
 
   let message = "The following entries have validation errors:<br>";
-  const acceptedFormats = "'dd-MM-yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy', or 'dd/MM/yyyy'";
 
   const errorsByRowIndex = {};
   errors.forEach(err => {
@@ -725,17 +976,7 @@ const formatValidationErrorMessage = (errors) => {
       // Use the original header name if found, otherwise use the mapped name
       const displayColumnName = originalColumnNameEntry ? originalColumnNameEntry[0] : err.columnName;
 
-
-      if (err.columnName === "consignment_id") {
-        message += `- Invalid '${displayColumnName}' value: "${err.value}". Must be a number.<br>`;
-      } else if (err.columnName.includes("_date")) {
-        // Check if the error is specifically for delivery_date and the value was null/undefined/empty
-        // In this case, the message should be different or not shown if it's optional
-        // For now, keep the message but the validation logic below will prevent adding the error for optional dates
-        message += `- Invalid '${displayColumnName}' date value: "${err.value}". Expected formats: ${acceptedFormats}.<br>`;
-      } else {
-        message += `- Invalid value for '${displayColumnName}': "${err.value}".<br>`;
-      }
+      message += `- Invalid '${displayColumnName}' value: "${err.value}". ${err.message}<br>`;
     });
   });
 
@@ -746,7 +987,7 @@ const formatValidationErrorMessage = (errors) => {
 const apiUrl = `http://localhost:3001/fsm/consignments/`;
 
 console.log(`localStorage.getItem("authResponse"): ` + localStorage.getItem("authResponse"))
-const roleId = localStorage.getItem("authResponse") != null ? parseInt(JSON.parse(localStorage.getItem("authResponse")).roleId) : "";
+const roleId = localStorage.getItem("authResponse") != null ? parseInt(JSON.parse(localStorage.getItem("authResponse")).userId) : "";
 const authToken = localStorage.getItem("authResponse") != null ? JSON.parse(localStorage.getItem("authResponse")).token : "";
 const uploadedBy = localStorage.getItem("authResponse") != null ? JSON.parse(localStorage.getItem("authResponse")).userName : "";
 const headers = {
@@ -840,25 +1081,17 @@ const handleMessageBoxClose = () => {
 
   if (messageBoxPurpose.value === 'validation') {
     console.log("Validation message box closed. Checking if API call is needed.");
-    // After closing validation message, if there's data marked for acceptance, trigger the API call
     if (dataToSendToApi.value && dataToSendToApi.value.length > 0) {
       console.log("Proceeding with API call for accepted data.");
-      // Clear validation errors only AFTER the potential API call is triggered for accepted data
-      // validationErrors.value = []; // This will be cleared inside triggerAcceptApiCall's finally or success
-
       triggerAcceptApiCall(dataToSendToApi.value);
     } else {
       console.log("No accepted data after validation. API call skipped.");
-      // If no data was accepted after validation (meaning all rows had errors),
-      // the process is effectively finished for this file. Reset.
       resetAfterProcess();
     }
   } else if (messageBoxPurpose.value === 'apiResponse') {
     console.log("API response message box closed.");
-    // API response message box signals the end of the process (either success or final error)
     apiResponseData.value = null;
     apiErrorMessage.value = null;
-    // State should be reset after the API response is shown
     resetAfterProcess();
   }
 
@@ -877,12 +1110,12 @@ const triggerAcceptApiCall = async (dataArray) => {
   const rejectCountValidated = rejectedRows.value.length;
 
   const rejectedRowsParam = rejectedRows.value.length > 0
-    ? JSON.stringify(rejectedRows.value.map(index => index + 1))
-    : "[]"; 
+    ? JSON.stringify(rejectedRows.value.map(index => index + 1)).replace(/,/g, ', ')
+    : "[]";
   const acceptedRowsParam = acceptedRows.value.length > 0
-    ? JSON.stringify(acceptedRows.value.map(index => index + 1)) 
-    : "[]"; 
-
+    ? JSON.stringify(acceptedRows.value.map(index => index + 1)).replace(/,/g, ', ')
+    : "[]";
+  console.log("acceptedRowsParam type: ", acceptedRowsParam);
 
   const fileType = file_id === 1 ? "Shipment letter" : file_id === 2 ? "Delivered letter" : file_id === 3 ? "Returned letter" : "Invalid file type!";
 
@@ -896,15 +1129,13 @@ const triggerAcceptApiCall = async (dataArray) => {
     fileType: fileType
   });
 
-  if (rejectedRows.value.length > 0) 
-  {params.append('rejectedRows', rejectedRowsParam);}
-  else{
+  if (rejectedRows.value.length > 0) { params.append('rejectedRows', rejectedRowsParam); }
+  else {
     params.append('rejectedRows', '[]');
   }
-  if (acceptedRows.value.length > 0) 
-  {
+  if (acceptedRows.value.length > 0) {
     params.append('acceptedRows', acceptedRowsParam);
-  }else{
+  } else {
     params.append('acceptedRows', '[]');
 
   }
@@ -915,7 +1146,8 @@ const triggerAcceptApiCall = async (dataArray) => {
   console.log("Data being sent to Accept API:", dataArray);
 
   const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
-  if (tokenExpiration >= Date.now()) {
+  console.log("tokenExpiration >>", typeof (tokenExpiration));
+  if (tokenExpiration >= Date.now() && tokenExpiration != NaN) {
     try {
       const data = await makeApiRequest(acceptUrl, "POST", headers, dataArray);
 
@@ -934,7 +1166,8 @@ const triggerAcceptApiCall = async (dataArray) => {
       let successMessage = `${apiMessage}<br>`;
 
       if (validationErrors.value.length > 0) {
-        successMessage += `Some records had validation errors and were not processed.<br>`;
+        // successMessage += `Some records had validation errors and were not processed.<br>`;
+        successMessage += `rejected: ${finalRejectedCount} records.<br>`;
         successMessage += `accepted: ${finalAcceptedCount} records.<br>`;
         successMessage += `Total records in file: ${total_record}.`;
       } else {
@@ -953,15 +1186,33 @@ const triggerAcceptApiCall = async (dataArray) => {
 
     } catch (error) {
       apiResponseData.value = null;
-      apiErrorMessage.value = error.message || 'An unknown error occurred during acceptance.';
+      if (error && error.status === 401) {
+        messageBoxTitle.value = "Unauthorized";
+        messageBoxType.value = "error";
+        apiErrorMessage.value = "Unauthorized: Your session may have expired or you lack permission. Please log in again.";
+      } else if (error && error.status) {
+        messageBoxType.value = "error";
+        messageBoxTitle.value = "Acception Failed";
+        apiErrorMessage.value = `Failed to generate the report. Server responded with status ${error.status}: ${error.statusText}.`;
+      } else if (error instanceof TypeError) {
+        messageBoxType.value = "error";
+        messageBoxTitle.value = "Acception Failed";
+        apiErrorMessage.value = `Network Error: Could not reach the report server. Please check your connection and the server address. (${error.message})`;
+      }
+      else {
+        messageBoxType.value = "error";
+        apiErrorMessage.value = "Failed to generate the report due to an unexpected error.";
+      }
+      apiErrorMessage.value = error.message || 'An unknown error occurred during rejection.';
 
-      messageBoxTitle.value = "Upload Failed";
+      messageBoxTitle.value = "Acception Failed";
       messageBoxType.value = "error";
       messageBoxContent.value = apiErrorMessage.value;
 
-      messageBoxPurpose.value = 'apiResponse'; // Indicate this is an API response message
+      messageBoxPurpose.value = 'apiResponse';
       showMessageBox.value = true;
-    } finally {
+    }
+    finally {
       dataToSendToApi.value = [];
       validationErrors.value = [];
     }
@@ -971,8 +1222,9 @@ const triggerAcceptApiCall = async (dataArray) => {
     messageBoxTitle.value = 'Session Invalid';
     messageBoxType.value = 'error';
     showMessageBox.value = true;
-    next({ name: 'Login' });
-    return
+    setTimeout(() => {
+      router.push('/');
+    }, 3000); return
   }
 };
 
@@ -996,15 +1248,14 @@ const resetAfterProcess = () => {
 
 const rejectAllData = async () => {
   errorMessage.value = null;
-  // Clear previous state related to validation/acceptance
   rejectedRows.value = [];
   acceptedRows.value = [];
   showMessageBox.value = false;
   messageBoxPurpose.value = null;
   apiResponseData.value = null;
   apiErrorMessage.value = null;
-  dataToSendToApi.value = []; // Clear any data potentially prepared for acceptance
-  validationErrors.value = []; // Clear any validation errors
+  dataToSendToApi.value = [];
+  validationErrors.value = [];
 
   if (mappedObjects.value.length === 0 || !fileName.value) {
     messageBoxTitle.value = "Info";
@@ -1025,30 +1276,27 @@ const rejectAllData = async () => {
     return;
   }
 
-  isLoading.value = true; // Start loading indicator
+  isLoading.value = true;
 
-  // --- MODIFICATION START ---
-  // When rejecting all, explicitly mark all rows as rejected
-  acceptedRows.value = []; // Set accepted rows to empty
-  rejectedRows.value = []; // Clear rejected rows first
+  acceptedRows.value = [];
+  rejectedRows.value = [];
   for (let i = 0; i < total_record; i++) {
-    // Assuming 0-based indexing is fine internally, will adjust for API param if needed
     rejectedRows.value.push(i);
   }
 
-  const acceptCountToSend = 0; // 0 accepted when rejecting all
-  const rejectCountToSend = total_record; // All rows rejected
+  const acceptCountToSend = 0;
+  const rejectCountToSend = total_record;
 
   const rejectedRowsParam = rejectedRows.value.length > 0
-    ? JSON.stringify(rejectedRows.value.map(index => index + 1)) 
-    : "[]"; 
+    ? JSON.stringify(rejectedRows.value.map(index => index + 1)).replace(/,/g, ', ')
+    : "[]";
 
 
   const fileType = file_id === 1 ? "Shipment letter" : file_id === 2 ? "Delivered letter" : file_id === 3 ? "Returned letter" : "Invalid file type!";
 
   const params = new URLSearchParams({
     fileName: fileName.value,
-    userId: roleId, // Assuming roleId is the correct user identifier
+    userId: roleId,
     recordCount: total_record,
     accept_record_count: acceptCountToSend,
     reject_record_count: rejectCountToSend,
@@ -1057,7 +1305,7 @@ const rejectAllData = async () => {
   });
 
   if (rejectedRows.value.length > 0) params.append('rejectedRows', rejectedRowsParam);
-  params.append('acceptedRows','[]');
+  params.append('acceptedRows', '[]');
   const rejectUrl = `${apiUrl}reject?${params.toString()}`;
   console.log("Reject URL:", rejectUrl);
   const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
@@ -1106,7 +1354,8 @@ const rejectAllData = async () => {
 
       messageBoxPurpose.value = 'apiResponse';
       showMessageBox.value = true;
-    } finally {
+    }
+    finally {
       isLoading.value = false; // Ensure loading is turned off
       // Reset state after the API response (success or failure)
       // resetAfterProcess(); // Reset happens after message box is closed
@@ -1152,10 +1401,8 @@ const acceptAllData = async () => {
     messageBoxTitle.value = "Warning";
     messageBoxType.value = "warning";
     messageBoxContent.value = `Cannot process invalid file type. Please upload a file with 7, 8, or 16 columns.`;
-    messageBoxPurpose.value = 'apiResponse'; // Use apiResponse purpose as it's a final status message
-    showMessageBox.value = true;
-    // No isLoading = false here
-    resetAfterProcess(); // Reset state as file type is invalid
+    messageBoxPurpose.value = 'apiResponse'; 
+    resetAfterProcess(); 
     return;
   }
 
@@ -1190,11 +1437,7 @@ const acceptAllData = async () => {
           value: rawConsignmentValue,
           message: "Invalid consignment ID. Must be a number."
         });
-      } else {
-        // Convert to number for consistency if needed, or keep as string if API expects string
-        // For now, keeping as string as per original data, validation is just for format
-        // formattedObj[consignmentIdKey] = parseInt(rawConsignmentValue, 10); // Example if API needs number
-      }
+      } 
     }
 
     // Determine which date fields to validate based on file_id
@@ -1225,25 +1468,20 @@ const acceptAllData = async () => {
         const formattedDate = formatDate(rawDate);
         console.log(`Row ${i + 1}: Raw ${dateKey}: "${rawDate}", Formatted: "${formattedDate}"`); // Added detailed log
 
-        // Check if the formatted date is null AND if this date field is *not* in the optional list
         if (formattedDate === null && !optionalDateFields.includes(dateKey)) {
-          // This date field is required and invalid
-          rowIsValid = false; // Mark the row as invalid
+          rowIsValid = false; 
           currentValidationErrors.push({
             rowIndex: i,
             columnName: dateKey,
             value: rawDate,
             message: "Invalid date format"
           });
-          formattedObj[dateKey] = null; // Set to null for API if invalid
+          formattedObj[dateKey] = null;
         } else {
-          // Date was formatted successfully OR it was an optional date field and was null/empty
-          formattedObj[dateKey] = formattedDate; // Use the formatted date (yyyy-MM-dd) or null
+          formattedObj[dateKey] = formattedDate; 
         }
       }
     });
-
-
 
     if (rowIsValid) {
       currentAcceptedDataForApi.push(formattedObj);
@@ -1275,9 +1513,7 @@ const acceptAllData = async () => {
     messageBoxPurpose.value = 'validation'; // Indicate this is a validation message
     showMessageBox.value = true;
 
-    // The API call for accepted data will be triggered when this message box is closed
   } else {
-    // If no validation errors, proceed directly to API call
     console.log("No validation errors. Proceeding directly to API call.");
     triggerAcceptApiCall(dataToSendToApi.value);
   }
@@ -1796,47 +2032,6 @@ button {
     padding: 30px;
   }
 
-  /* Message Box */
-  .el-overlay.is-message-box {
-    /* Flexbox centering remains active */
-    background-color: rgba(0, 0, 0, 0.5);
-    /* Keep backdrop */
-  }
-
-  .el-message-box {
-    width: 500px;
-    /* Revert to fixed width or adjust max-width */
-    max-width: none;
-    /* Remove max-width */
-    /* Remove top, left, transform */
-  }
-
-  .el-message-box__header {
-    padding: 15px 24px;
-  }
-
-  .el-message-box__title {
-    font-size: 1.1em;
-  }
-
-  .el-message-box__content {
-    padding: 24px;
-  }
-
-  .el-message-box__container {
-    max-height: calc(80vh - 120px);
-    /* Revert calculation */
-    padding-right: 10px;
-  }
-
-  .p-text {
-    line-height: 1.6;
-    font-size: 1em;
-  }
-
-  .el-message-box__btns {
-    padding: 15px 24px 15px 0;
-  }
 }
 
 
@@ -2021,45 +2216,5 @@ button {
     font-size: 1em;
   }
 
-  .el-overlay.is-message-box {
-    /* Flexbox centering remains active */
-    background-color: rgba(0, 0, 0, 0.5);
-    /* Keep backdrop */
-  }
-
-  .el-message-box {
-    width: 500px;
-    /* Revert to fixed width or adjust max-width */
-    max-width: none;
-    /* Remove max-width */
-    /* Remove top, left, transform */
-  }
-
-  .el-message-box__header {
-    padding: 15px 24px;
-  }
-
-  .el-message-box__title {
-    font-size: 1.1em;
-  }
-
-  .el-message-box__content {
-    padding: 24px;
-  }
-
-  .el-message-box__container {
-    /* max-height: calc(80vh - 120px); */
-    /* Revert calculation */
-    padding-right: 10px;
-  }
-
-  .p-text {
-    line-height: 1.6;
-    font-size: 1em;
-  }
-
-  .el-message-box__btns {
-    padding: 15px 24px 15px 0;
-  }
 }
 </style>

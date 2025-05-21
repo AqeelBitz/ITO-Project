@@ -27,5 +27,7 @@ onMounted(() => {
 <style scoped>
 .el-main{
   height: 100vh;
+  background-color: rgb(0, 99, 99);
+
 }
 </style>

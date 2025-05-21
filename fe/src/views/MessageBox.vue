@@ -153,6 +153,8 @@ const emit = defineEmits(['close']);
   height: auto;
   line-height: 1.5;
   font-size: 0.9em;
+  max-height: 67vh;
+
 }
 
 .el-message-box__btns {
@@ -292,6 +294,8 @@ button {
   .p-text {
     line-height: 1.6;
     font-size: 1em;
+    max-height: 67vh;
+
   }
 
   .el-message-box__btns {

@@ -314,7 +314,7 @@ const viewReport = async () => {
   }
 }
 const InputValidation = (selectedValue, inputValue) => {
-  if (selectedValue === "consignment_id" || selectedValue === "account_no" || selectedValue === "customer_cnic_number") {
+  if (selectedValue === "consignment_id" || selectedValue === "account_no" ) {
     if (isNaN(Number(inputValue.trim()))) {
       return false;
     }
@@ -353,8 +353,10 @@ const searchButton = async () => {
     return;
   }
   const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
+  console.log("input.value: ",input.value)
   if (tokenExpiration >= Date.now()) {
-    let apiUrl = `http://localhost:3001/fsm/consignments/search?${select.value}=${input.value}`;
+    let apiUrl = `http://localhost:3001/fsm/consignments/search?${select.value}=${encodeURIComponent(input.value)}`;
+    console.log("apiUrl: ",apiUrl);
     const authToken = JSON.parse(localStorage.getItem("authResponse"))?.token;
     console.log("authToken: ", authToken);
     const headers = {

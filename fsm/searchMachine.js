@@ -20,7 +20,8 @@ export const searchMachine = setup({
             }
 
             // console.log("FSM: Performing search for:", query);
-            const url = `http://10.51.41.13:8082/consignments/search?${key}=${value}`;
+            const url = `http://10.51.41.13:8082/consignments/search?${key}=${encodeURIComponent(value)}`;
+            
             try {
                 console.log("inside try block")
                 const response = await fetch(url, {
