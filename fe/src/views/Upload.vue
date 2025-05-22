@@ -36,7 +36,7 @@
         :close-on-click-modal="false" :close-on-press-escape="false" @close="closeModal">
         <div class="modal-content">
           <p>Please select the date range for the report.</p>
-          <el-date-picker v-model="fromDatePicker" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
+          <el-date-picker v-model="fromDatePicker" :disabled-date="disableToDate" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
             placeholder="From Date" style="margin-right: 10px; margin-bottom: 10px;" />
           <el-date-picker v-model="toDatePicker" :disabled-date="disableToDate" type="date" format="YYYY-MM-DD"
             value-format="YYYY-MM-DD" placeholder="To Date" style="margin-right: 10px;" />
@@ -139,14 +139,8 @@ const reportModalVisible = ref(false);
 const isGeneratingReport = ref(false);
 const reportError = ref(null);
 const today = new Date();
-
-
-
-
 const router = useRouter();
-
 const errorMessage = ref(null);
-const multipleSelection = ref([]);
 const tableData = ref([]);
 const showMessageBox = ref(false);
 const messageBoxContent = ref('');
@@ -579,7 +573,7 @@ const headingMap = {
   "booking date": "booking_date",
   "account number": "account_no",
   "account title": "account_title",
-  "receiverâ€™s cnic": "receiver_cnic", // Note: This header has a non-standard char
+  "receiver's cnic": "receiver_cnic", // Note: This header has a non-standard char
   "sb/ cb": "shipping_bill",
   "address": "address",
   "city": "city",
@@ -976,7 +970,11 @@ const formatValidationErrorMessage = (errors) => {
       // Use the original header name if found, otherwise use the mapped name
       const displayColumnName = originalColumnNameEntry ? originalColumnNameEntry[0] : err.columnName;
 
-      message += `- Invalid '${displayColumnName}' value: "${err.value}". ${err.message}<br>`;
+      if(err.value){
+        message += `- Invalid '${displayColumnName}' value: "${err.value}". ${err.message}<br>`;
+      }else{
+        message += `- Invalid '${displayColumnName}' value <br>`;  
+      }
     });
   });
 
@@ -999,7 +997,13 @@ const headers = {
 const makeApiRequest = async (url, method, headers, body = null) => {
   isLoading.value = true;
   const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
-  if (tokenExpiration >= Date.now()) {
+  const authResponse = localStorage.getItem("authResponse");
+  const authToken = authResponse != null ? JSON.parse(authResponse).token : "";
+
+  console.log("authToken: ", authToken);
+
+  // Check if authToken exists AND is not expired
+  if (authToken && authToken !== '' && tokenExpiration && tokenExpiration > Date.now()) {
     try {
       console.log(`Making API request: ${method} ${url}`);
       const response = await fetch(url, {
@@ -1009,7 +1013,6 @@ const makeApiRequest = async (url, method, headers, body = null) => {
       });
 
       if (!response.ok) {
-
         let errorBody;
         let errorMessage = `HTTP error! Status: ${response.status}`;
         let errorDetails = null;
@@ -1072,7 +1075,7 @@ const makeApiRequest = async (url, method, headers, body = null) => {
     showMessageBox.value = true;
     setTimeout(() => {
       router.push('/');
-    }, 3000);
+    }, 30000);
     return;
   }
 };
@@ -1318,7 +1321,6 @@ const rejectAllData = async () => {
 
       messageBoxTitle.value = "Rejection Result";
       messageBoxType.value = "success";
-      // Display feedback based on the rejection action
       const apiMessage = data.message || `Successfully rejected ${total_record} records.`;
       messageBoxContent.value = `${apiMessage}<br>Total rejected: ${total_record}<br>Total accepted: 0<br>Total records in file: ${total_record}.`;
 
@@ -1373,6 +1375,19 @@ const rejectAllData = async () => {
   }
 };
 
+const checkColumnValidation=(columnKey, originalRow, rowIsValid, currentValidationErrors,i)=>{
+  if (columnKey) {
+      if (originalRow === null || originalRow === undefined || originalRow.toString().trim() === '' ) {
+        rowIsValid = false;
+        currentValidationErrors.push({
+          rowIndex: i,
+          columnName: columnKey,
+          value: '',
+          message: `Invalid value ${originalRow} entered.`
+        });
+      } 
+    }
+}
 
 const acceptAllData = async () => {
   errorMessage.value = null;
@@ -1417,18 +1432,35 @@ const acceptAllData = async () => {
 
   for (let i = 0; i < recordsToProcess.length; i++) {
     const originalRow = recordsToProcess[i];
-    // Create a copy to modify for API, leaving original mappedObjects untouched
     const formattedObj = { ...originalRow };
-    let rowIsValid = true; // Assume valid until an error is found
+    let rowIsValid = true; 
 
-    console.log(`--- Processing Row ${i + 1} ---`); // Log 1-based index for user
+    console.log(`--- Processing Row ${i + 1} ---`); 
     console.log("Original Row Data (from mappedObjects):", originalRow);
 
-    // Validate consignment_id (must be a number) - Required for all file types
     const consignmentIdKey = headingMap["consignment number"];
+    const accountnumberKey = headingMap["account number"];
+    const accounttitleKey = headingMap["account title"];
+    const receiverscnicKey = headingMap["receiver's cnic"];
+    const courierKey = headingMap["courier"];
+    const shippingBillKey = headingMap["sb/ cb"];
+    const addressKey = headingMap["address"];
+    const cityKey = headingMap["city"];
+    const emailKey = headingMap["email"];
+    const mobilenumberKey = headingMap["mobile number"];
+    const letterTypeKey = headingMap["letter type"];
+    const cardnumberKey = headingMap["card number"];
+    const typeofcardKey = headingMap["type of card"];
+    const returnreasonKey = headingMap["return reason"];
+    const branchcodeKey = headingMap["branch code"];
+    const receivernamebKey = headingMap["receiver name b"];
+    const statusKey = headingMap["status"];
+    const receivernamedKey = headingMap["receiver name d"];
+    const relationshipKey = headingMap["relationship"];
+    const cardstatusKey = headingMap["card status"];
+    const customercnicnumberKey = headingMap["customer cnic number"];
     if (consignmentIdKey) {
       const rawConsignmentValue = originalRow[consignmentIdKey];
-      // Check if value is null, undefined, empty string, or not a number
       if (rawConsignmentValue === null || rawConsignmentValue === undefined || rawConsignmentValue.toString().trim() === '' || isNaN(rawConsignmentValue)) {
         rowIsValid = false;
         currentValidationErrors.push({
@@ -1440,33 +1472,50 @@ const acceptAllData = async () => {
       } 
     }
 
-    // Determine which date fields to validate based on file_id
     let dateFieldsToValidate = [];
-    let optionalDateFields = []; // Keep track of dates that are allowed to be empty/null
+    let optionalDateFields = []; 
 
-    if (file_id === 1) { // Shipment letter
+    if (file_id === 1) {
+      checkColumnValidation(accountnumberKey, originalRow[accountnumberKey],rowIsValid,currentValidationErrors, i);
+      checkColumnValidation(accounttitleKey,originalRow[accounttitleKey],rowIsValid,currentValidationErrors, i);
+      checkColumnValidation(customercnicnumberKey,originalRow[customercnicnumberKey],rowIsValid,currentValidationErrors, i);
+      checkColumnValidation(shippingBillKey,originalRow[shippingBillKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(courierKey,originalRow[courierKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(addressKey,originalRow[addressKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(cityKey,originalRow[cityKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(emailKey,originalRow[emailKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(mobilenumberKey,originalRow[mobilenumberKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(letterTypeKey,originalRow[letterTypeKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(cardnumberKey,originalRow[cardnumberKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(typeofcardKey,originalRow[typeofcardKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(statusKey,originalRow[statusKey],rowIsValid,currentValidationErrors,i);
       dateFieldsToValidate = [
         headingMap["booking date"],
         headingMap["card creation date"]
       ].filter(key => key !== undefined);
-    } else if (file_id === 2) { // Delivered letter
+    } else if (file_id === 2) { 
+      checkColumnValidation(courierKey,originalRow[courierKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(statusKey,originalRow[statusKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(receivernamedKey,originalRow[receivernamedKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(cardstatusKey,originalRow[cardstatusKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(relationshipKey,originalRow[relationshipKey],rowIsValid,currentValidationErrors,i);
       dateFieldsToValidate = [
         headingMap["delivery date"]
       ].filter(key => key !== undefined);
-      optionalDateFields.push(headingMap["delivery date"]);
     } else if (file_id === 3) {
+      checkColumnValidation(returnreasonKey,originalRow[returnreasonKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(branchcodeKey,originalRow[branchcodeKey],rowIsValid,currentValidationErrors,i);
+      checkColumnValidation(receivernamebKey,originalRow[receivernamebKey],rowIsValid,currentValidationErrors,i);
       dateFieldsToValidate = [
         headingMap["date of return shipment received at branch"]
       ].filter(key => key !== undefined);
-      optionalDateFields.push(headingMap["date of return shipment received at branch"]);
     }
 
-    // Validate the determined date fields
     dateFieldsToValidate.forEach(dateKey => {
-      if (dateKey) { // Ensure the mapped key exists
+      if (dateKey) { 
         const rawDate = originalRow[dateKey];
         const formattedDate = formatDate(rawDate);
-        console.log(`Row ${i + 1}: Raw ${dateKey}: "${rawDate}", Formatted: "${formattedDate}"`); // Added detailed log
+        console.log(`Row ${i + 1}: Raw ${dateKey}: "${rawDate}", Formatted: "${formattedDate}"`); 
 
         if (formattedDate === null && !optionalDateFields.includes(dateKey)) {
           rowIsValid = false; 

@@ -117,7 +117,7 @@
         :close-on-click-modal="false" :close-on-press-escape="false" @close="closeModal">
         <div class="modal-content">
           <p>Please select the date range for the report.</p>
-          <el-date-picker v-model="fromDatePicker" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
+          <el-date-picker v-model="fromDatePicker" :disabled-date="disableToDate" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
             placeholder="From Date" style="margin-right: 10px; margin-bottom: 10px;" />
           <el-date-picker v-model="toDatePicker" :disabled-date="disableToDate" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
             placeholder="To Date" style="margin-right: 10px;" />
@@ -230,7 +230,7 @@ const viewReport = async () => {
       const fromDate = fromDatePicker.value;
       const toDate = toDatePicker.value;
       console.log("username passed for report:", username);
-      const url = `http://localhost:8081/api/data-access/consignment-details/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
+      const url = `http://10.51.41.26:8081/api/data-access/consignment-details/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
 
       const response = await fetch(url, {
         method: 'GET',
