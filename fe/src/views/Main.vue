@@ -49,7 +49,8 @@ const router = useRouter();
 
 const handleLogout = () => {
   localStorage.removeItem('authResponse');
-
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('tokenExpiration');
   router.push('/'); 
 };
 

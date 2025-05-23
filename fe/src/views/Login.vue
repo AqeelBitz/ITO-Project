@@ -109,7 +109,6 @@ const checkDigits = (event) => {
 }
 
 const handleMessageBoxClose = () => {
-  // Hide the message box
   showMessageBox.value = false;
 
   if (messageBoxPurpose.value === 'validation') {

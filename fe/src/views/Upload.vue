@@ -448,17 +448,18 @@ const viewReport = async () => {
   }
 
   isGeneratingReport.value = true; // Start loading state
+  const authToken = localStorage.getItem("authResponse") ? JSON.parse(localStorage.getItem("authResponse"))?.token : "";
+  const authResponse = localStorage.getItem("authResponse") ? localStorage.getItem("authResponse") : "";
   const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
-  if (tokenExpiration >= Date.now()) {
+  if (tokenExpiration >= Date.now() && tokenExpiration !==0 && authToken !=="" && authResponse !=="") {
     try {
-      const authToken = JSON.parse(localStorage.getItem("authResponse")).token;
       const username = JSON.parse(localStorage.getItem("authResponse")).userName;
       const design = 'cts_report.rptdesign';
       const format = 'pdf';
       const fromDate = fromDatePicker.value;
       const toDate = toDatePicker.value;
       console.log("username passed for report:", username);
-      const url = `http://10.51.41.26:8081/api/data-access/consignment-details/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
+      const url = `http://localhost:8082/consignments/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
 
       const response = await fetch(url, {
         method: 'GET',

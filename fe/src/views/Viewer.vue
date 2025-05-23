@@ -220,17 +220,18 @@ const viewReport = async () => {
   }
 
   isGeneratingReport.value = true;
+  const authToken = localStorage.getItem("authResponse") ? JSON.parse(localStorage.getItem("authResponse"))?.token : "";
+  const authResponse = localStorage.getItem("authResponse") ? localStorage.getItem("authResponse") : "";
   const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
-  if (tokenExpiration >= Date.now()) {
+  if (tokenExpiration >= Date.now() && tokenExpiration !==0 && authToken !=="" && authResponse !=="") {
     try {
-      const authToken = JSON.parse(localStorage.getItem("authResponse"))?.token;
       const username = JSON.parse(localStorage.getItem("authResponse"))?.userName;
       const design = 'cts_report.rptdesign';
       const format = 'pdf';
       const fromDate = fromDatePicker.value;
       const toDate = toDatePicker.value;
       console.log("username passed for report:", username);
-      const url = `http://10.51.41.26:8081/api/data-access/consignment-details/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
+      const url = `http://localhost:8082/consignments/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -352,9 +353,11 @@ const searchButton = async () => {
     tableData.value = [];
     return;
   }
-  const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
+  const tokenExpiration = localStorage.getItem("tokenExpiration") ? parseInt(localStorage.getItem("tokenExpiration")) : 0;
+  const authToken = localStorage.getItem("authToken") ? localStorage.getItem("authToken") : "";
+  const authResponse = localStorage.getItem("authResponse") ? localStorage.getItem("authResponse") : "";
   console.log("input.value: ",input.value)
-  if (tokenExpiration >= Date.now()) {
+  if (tokenExpiration >= Date.now() && tokenExpiration !==0 && authToken !=="" && authResponse !=="") {
     let apiUrl = `http://localhost:3001/fsm/consignments/search?${select.value}=${encodeURIComponent(input.value)}`;
     console.log("apiUrl: ",apiUrl);
     const authToken = JSON.parse(localStorage.getItem("authResponse"))?.token;
