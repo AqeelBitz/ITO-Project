@@ -17,7 +17,6 @@ export const handler = (machineDefinition, req, res) => {
     const context = snapshot.context;
     console.log(`Handler: Actor transitioned to state: ${state}`);
 
-    // Login flow
     if (snapshot.matches('loggedIn')) {
       console.log("Handler (loggedIn): Context:", context);
       res.status(200).json({
@@ -36,7 +35,6 @@ export const handler = (machineDefinition, req, res) => {
       actor.stop();
     }
 
-    // Search flow
     else if (snapshot.matches('success')) {
       console.log("Handler (success): Context:", context);
       console.log("context: ", context);
@@ -64,7 +62,6 @@ export const handler = (machineDefinition, req, res) => {
       actor.stop();
     }
 
-    // Shared states
     else if (snapshot.matches('idle')) {
       console.log('Handler: State is idle. Waiting for SUBMIT...');
       console.log("Handler (idle): Context:", context);
@@ -76,8 +73,6 @@ export const handler = (machineDefinition, req, res) => {
 
   actor.subscribe({
     next: (state) => {
-      // console.log('------------------ Current State ------------------');
-      // console.log(JSON.stringify(state));
     },
     error: (err) => {
       console.error("Handler: Actor internal error:", err);

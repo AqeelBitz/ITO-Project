@@ -36,7 +36,7 @@ app.post('/fsm/login', async (req, res) => {
       res.status(200).json(state.context.result);
       actor.stop();
     } else if (state.matches('failure')) {
-      console.error("Login Failed - Error:", state.context.error); // Log the error
+      console.error("Login Failed - Error:", state.context.error); 
       res.status(401).json({ error: state.context.error });
       actor.stop();
     }
@@ -58,11 +58,7 @@ app.post('/fsm/consignments/accept', async (req, res) => {
   const uploadedBy = req.query.uploadedBy;
   const fileType = req.query.fileType;
   const authToken = req.headers.authorization;
-  // console.log("AuthToken: ",AuthToken.authorization)
-  // console.log("Header: ",AuthToken)
-  
 
-  // console.log("----> request body: ", req.body);
   const allConsginment = req.body;
 
   const app = express();
@@ -126,7 +122,7 @@ app.post('/fsm/consignments/accept', async (req, res) => {
       res.status(200).json(state.context.result);
       actor.stop();
     } else if (state.matches('failure')) {
-      console.error("Login Failed - Error:", state.context.error); // Log the error
+      console.error("Login Failed - Error:", state.context.error); 
       res.status(401).json({ error: state.context.error });
       actor.stop();
     }
@@ -179,7 +175,7 @@ app.post('/fsm/consignments/reject', async (req, res) => {
       res.status(200).json(state.context.result);
       actor.stop();
     } else if (state.matches('failure')) {
-      console.error("Login Failed - Error:", state.context.error); // Log the error
+      console.error("Login Failed - Error:", state.context.error);
       res.status(401).json({ error: state.context.error });
       actor.stop();
     }

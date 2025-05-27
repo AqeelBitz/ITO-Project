@@ -36,22 +36,22 @@ import router from '@/router';
     },
   });
   
-  const IDLE_TIMEOUT_MS = props.timeoutMinutes * 6000 * 1000; 
+  const IDLE_TIMEOUT_MS = props.timeoutMinutes * 60 * 1000; 
 
   let idleTimer = null; 
   let countdownInterval = null; 
-  const idleTimeLeft = ref(props.timeoutMinutes * 6000); 
+  const idleTimeLeft = ref(props.timeoutMinutes * 60); 
   const isLoggedOut = ref(false);
   
   const resetIdleTimer = () => {
     clearTimeout(idleTimer); 
     clearInterval(countdownInterval); 
-  
+    showStatus.value=false;
+
     if (!isLoggedOut.value) { 
       idleTimer = setTimeout(logoutUser, IDLE_TIMEOUT_MS);
-      idleTimeLeft.value = props.timeoutMinutes * 6000; 
+      idleTimeLeft.value = props.timeoutMinutes * 60; 
       startCountdown(); 
-      console.log('Idle timer reset. Next logout in', props.timeoutMinutes, 'minutes.');
     }
   };
   
@@ -65,7 +65,6 @@ import router from '@/router';
   const startCountdown = () => {
     countdownInterval = setInterval(() => {
       if (idleTimeLeft.value > 0) {
-        console.log("time left: ", idleTimeLeft.value)
         idleTimeLeft.value--;
         if(idleTimeLeft.value <=10){
             showStatus.value=true;
@@ -80,7 +79,6 @@ import router from '@/router';
     if (isLoggedOut.value) return;
   
     isLoggedOut.value = true;
-    console.log('User logged out due to inactivity.');
     
     messageBoxContent.value = 'You have been logged out due to inactivity.';
     messageBoxTitle.value = 'Logged Out';
@@ -96,15 +94,12 @@ import router from '@/router';
     }, 3000);
   };
   
-  
   onMounted(() => {
-    console.log('IdleLogoutWrapper mounted. Starting idle timer.');
     resetIdleTimer();
   
   });
   
   onBeforeUnmount(() => {
-    console.log('IdleLogoutWrapper unmounting. Clearing timers.');
     clearTimeout(idleTimer);
     clearInterval(countdownInterval);
   });

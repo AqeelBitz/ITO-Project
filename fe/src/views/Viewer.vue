@@ -230,7 +230,6 @@ const viewReport = async () => {
       const format = 'pdf';
       const fromDate = fromDatePicker.value;
       const toDate = toDatePicker.value;
-      console.log("username passed for report:", username);
       const url = `http://localhost:8082/consignments/generate?designfile=${design}&format=${format}&username=${username}&fromDate=${fromDate}&toDate=${toDate}`;
 
       const response = await fetch(url, {
@@ -356,12 +355,9 @@ const searchButton = async () => {
   const tokenExpiration = localStorage.getItem("tokenExpiration") ? parseInt(localStorage.getItem("tokenExpiration")) : 0;
   const authToken = localStorage.getItem("authToken") ? localStorage.getItem("authToken") : "";
   const authResponse = localStorage.getItem("authResponse") ? localStorage.getItem("authResponse") : "";
-  console.log("input.value: ",input.value)
   if (tokenExpiration >= Date.now() && tokenExpiration !==0 && authToken !=="" && authResponse !=="") {
     let apiUrl = `http://localhost:3001/fsm/consignments/search?${select.value}=${encodeURIComponent(input.value)}`;
-    console.log("apiUrl: ",apiUrl);
     const authToken = JSON.parse(localStorage.getItem("authResponse"))?.token;
-    console.log("authToken: ", authToken);
     const headers = {
       'accept': '*/*',
       'Authorization': `Bearer ${authToken}`,
@@ -372,7 +368,6 @@ const searchButton = async () => {
       });
       if (!response.ok) {
         const error = await response.json();
-        console.log("res error: ", error);
         tableData.value = [];
         messageBoxContent.value = error.message || 'Failed to fetch data.'
         messageBoxTitle.value = 'Error';
@@ -381,7 +376,6 @@ const searchButton = async () => {
         return;
       }
       const res = await response.json();
-      console.log("res===> ", res);
       if (res?.status === 400) {
         tableData.value = [];
         messageBoxContent.value = res.message;

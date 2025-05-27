@@ -1,9 +1,7 @@
-// apiService.js
-
 const checkTokenExpiration = () => {
     const tokenExpiration = localStorage.getItem('tokenExpiration');
     if (!tokenExpiration) {
-      return true; // Consider it expired if no expiration is found
+      return true; 
     }
     const now = Date.now();
     const expirationTimestampMs = parseInt(tokenExpiration, 10);
@@ -16,7 +14,6 @@ const checkTokenExpiration = () => {
     localStorage.removeItem('authResponse');
     if (router) {
       router.push('/login');
-      // Optionally show a message to the user
     } else {
       console.error('Router instance not available for logout.');
     }
@@ -24,9 +21,8 @@ const checkTokenExpiration = () => {
   
   const apiRequest = async (url, options = {}, router = null) => {
     if (checkTokenExpiration()) {
-      console.log('Token expired before API call.');
       handleLogout(router);
-      throw new Error('Session expired. Please log in again.'); // Prevent the API call
+      throw new Error('Session expired. Please log in again.');
     }
   
     const authToken = localStorage.getItem('authToken');

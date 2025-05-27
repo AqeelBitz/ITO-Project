@@ -1,4 +1,3 @@
-// // searchMachine.js
 import { setup, fromPromise, assign } from 'xstate';
 import axios from 'axios';
 
@@ -8,7 +7,6 @@ export const searchMachine = setup({
             console.log("inside search: ", input);
 
             const token = input.authToken;
-            // console.log("token: ", token);
             const key = Object.keys(input.queryparams)[0];
             console.log("FSM Actor: search actor invoked with key:", key)
             const value = input.queryparams[key];
@@ -19,7 +17,6 @@ export const searchMachine = setup({
                 "Authorization": token,
             }
 
-            // console.log("FSM: Performing search for:", query);
             const url = `http://10.51.41.13:8082/consignments/search?${key}=${encodeURIComponent(value)}`;
             
             try {

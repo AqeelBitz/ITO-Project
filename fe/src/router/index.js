@@ -55,17 +55,13 @@ const router = createRouter({
 });
 let isMessageBoxOpen = false;
 router.beforeEach((to, from, next) => {
-  console.log('--- Navigation Start ---');
-  console.log('Navigating to:', to.name);
-  console.log('Requires Auth:', to.meta.requiresAuth);
-  console.log('Allowed Roles:', to.meta.allowedRoles);
+
 
   const authToken = localStorage.getItem('authToken');
   const tokenExpiration = localStorage.getItem('tokenExpiration');
   const authResponseString = localStorage.getItem('authResponse');
   let isLoggedIn = false;
 
-  // 1. Determine if the user is currently logged in (this logic is correctly placed here)
   if (authToken && tokenExpiration && authResponseString) {
     try {
       const now = Date.now();
@@ -81,32 +77,23 @@ router.beforeEach((to, from, next) => {
     }
   }
 
-  // 2. Handle navigation to 'Login' page
   if (to.name === 'Login') {
-    if (isLoggedIn) { // If going to Login AND already logged in
-      console.log('User is already logged in. Redirecting from Login page to Main.');
-      next({ name: 'Main' }); // Redirect to your main/dashboard page
-      console.log('--- Navigation End (Redirected from Login while logged in) ---');
+    if (isLoggedIn) { 
+      next({ name: 'Main' }); 
       return;
-    } else { // If going to Login AND NOT logged in (or session invalid/expired)
-      console.log('Navigating to Login page. Allowing (user not logged in or session invalid).');
+    } else { 
       next();
-      console.log('--- Navigation End ---');
       return;
     }
   }
 
-  // 3. From here onwards, handle routes that require authentication
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-  console.log("tokenExpiration: ", tokenExpiration); // This log is fine here.
+  console.log("tokenExpiration: ", tokenExpiration); 
 
 
   if (requiresAuth) {
     let needsRedirectToLogin = false;
     let redirectReason = '';
-
-    // No need to re-evaluate isLoggedIn here if you already did it at the top
-    // The `isLoggedIn` variable already holds the current state based on token/expiration/authResponse.
 
     if (!authToken || !tokenExpiration) {
       console.log('Auth token or expiration missing from storage.');
@@ -129,15 +116,11 @@ router.beforeEach((to, from, next) => {
     let userRole = null;
 
     if (!needsRedirectToLogin) {
-        // Use the authResponseString fetched at the top
         if (authResponseString) {
           try {
             const authResponse = JSON.parse(authResponseString);
             console.log('Parsed authResponse:', authResponse);
             userRole = authResponse ? authResponse.roleName : null;
-            // The isLoggedIn variable should already be true if we reach here and it's not redirecting to login.
-            // Re-assigning `isLoggedIn = !!authResponse;` here is mostly redundant but harmless
-            // if `isLoggedIn` was indeed correctly set at the top.
             isLoggedIn = !!authResponse;
             console.log('Extracted userRole:', userRole);
 
@@ -170,8 +153,6 @@ router.beforeEach((to, from, next) => {
         localStorage.removeItem('tokenExpiration');
         localStorage.removeItem('authResponse');
 
-        // Ensure isMessageBoxOpen is defined somewhere in your component/global state
-        // For example: let isMessageBoxOpen = false; at the top of your script.
         if (!isMessageBoxOpen) {
             isMessageBoxOpen = true;
             ElMessageBox.alert(`${redirectReason || 'Your session is invalid.'} Please log in again.`, 'Session Invalid', {

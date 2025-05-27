@@ -7,7 +7,6 @@ export const rejectUploadMachine = setup({
       console.log("inside uploadRequest: ", input);
       console.log("-----------------------------");
       const Authorizationtoken = input.authToken;
-      // console.log("token: ",token);
       const headersToSend = {
         'Content-Type': 'application/json',
         'Authorization': Authorizationtoken
@@ -35,7 +34,6 @@ export const rejectUploadMachine = setup({
   id: 'reject',
   initial: 'idle',
   context: ({input})=>({
-    // payload: input.payload,
     queryparams: input.queryparams,
     authToken:input.authToken,
     result: '',

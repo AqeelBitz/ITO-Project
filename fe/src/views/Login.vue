@@ -46,7 +46,6 @@
 
 <script setup>
 import { reactive, ref, computed } from 'vue';
-import { ElForm, ElFormItem, ElInput, ElButton } from 'element-plus'; // Removed ElMessage import
 import { useRouter } from 'vue-router';
 import MessageBox from './MessageBox.vue'; 
 import decodeJwtPayload from '../utils/jwtDecoder';
@@ -112,16 +111,12 @@ const handleMessageBoxClose = () => {
   showMessageBox.value = false;
 
   if (messageBoxPurpose.value === 'validation') {
-    console.log("Validation message box closed. Checking if API call is needed.");
     if (dataToSendToApi.value && dataToSendToApi.value.length > 0) {
-      console.log("Proceeding with API call for accepted data.");
       validationErrors.value = []; 
       triggerAcceptApiCall(dataToSendToApi.value); 
     } else {
-      console.log("No accepted data after validation. API call skipped.");
     }
   } else if (messageBoxPurpose.value === 'apiResponse') {
-    console.log("API response message box closed.");
     apiResponseData.value = null;
     apiErrorMessage.value = null;
   }
@@ -169,7 +164,6 @@ const callApi = async () => {
 
     if (!response.ok) {
 
-      console.log(`HTTP error! status: ${response.status}`);
       const errorData = await response.json();
 
       messageBoxContent.value = errorData.error.message || 'An error occurred during login.';
@@ -195,11 +189,6 @@ const callApi = async () => {
             localStorage.setItem('authToken', token);
             localStorage.setItem('tokenExpiration', expirationTimestampMs);
             localStorage.setItem('authResponse', JSON.stringify(data));
-            console.log('Login successful. Token stored.');
-    console.log('Token expires at (UTC):', new Date(expirationTimestampMs).toISOString());
-    console.log('Token issued at (UTC):', new Date(issuedAtTimestampMs).toISOString());
-    console.log('Token expires at (PKT):', new Date(expirationTimestampMs).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }));
-    console.log('Token issued at (PKT):', new Date(issuedAtTimestampMs).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }));
 
 
             messageBoxContent.value = `Sign-on is Successful <br> Last Sign-on date is ${new Date().toLocaleDateString()}`;

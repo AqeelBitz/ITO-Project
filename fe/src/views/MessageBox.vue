@@ -29,7 +29,6 @@
 <script setup>
 import { defineProps, defineEmits } from 'vue';
 
-// Define the props that this component accepts
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -37,49 +36,41 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: 'Message', // Default title
+    default: 'Message',
   },
   content: {
     type: String,
-    default: '', // Default empty content
+    default: '', 
   },
   type: {
     type: String,
-    default: 'info', // 'info', 'success', 'warning', 'error' - useful for styling later
+    default: 'info',
   }
 });
 
-// Define the events this component can emit
 const emit = defineEmits(['close']);
 </script>
 <style>
 .el-overlay.is-message-box {
   display: flex;
-  /* Use flexbox to center the message box */
   align-items: center;
-  /* Center vertically */
   justify-content: center;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
-  /* Add a backdrop */
   z-index: 2006;
 }
 
 .el-message-box {
   width: 90%;
-  /* Use percentage for width */
   max-width: 500px;
-  /* Set a max-width for larger screens */
-  /* Removed top, left, and transform as flexbox handles centering */
   background-color: #ffffff;
   overflow: hidden;
   border-radius: 4px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.08);
   flex-direction: column;
-  /* Stack header, content, and buttons vertically */
 }
 
 .el-message-box__header {
@@ -92,7 +83,6 @@ const emit = defineEmits(['close']);
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  /* Prevent header from shrinking */
 }
 
 .el-message-box__title {
@@ -115,14 +105,12 @@ const emit = defineEmits(['close']);
   font-size: 14px;
   overflow: hidden;
   flex-grow: 1;
-  /* Allow content to take available space */
   display: flex;
   flex-direction: column;
 }
 
 .el-message-box__container {
   max-height: calc(80vh - 100px);
-  /* Adjusted calculation */
   overflow-y: auto;
   padding-right: 5px;
   box-sizing: border-box;
@@ -162,7 +150,6 @@ const emit = defineEmits(['close']);
   padding: 10px 15px 10px 0;
   border-top: 1px solid #f4f4f4;
   flex-shrink: 0;
-  /* Prevent buttons from shrinking */
 }
 
 .el-message-box__btns .el-button {
@@ -223,29 +210,22 @@ button {
     margin-top: 20px;
     overflow-x: visible;
     max-height: none;
-    /* Remove max-height on larger screens */
     overflow-y: visible;
-    /* Remove vertical scrolling on larger screens */
   }
 
   .el-table td.el-table__cell,
   .el-table th.el-table__cell {
     padding: 12px 15px;
-    /* Revert/Adjust padding for larger screens */
   }
 
   .el-table td.el-table__cell {
     white-space: normal;
-    /* Ensure text wraps */
     word-break: break-word;
-    /* Break long words if necessary */
   }
 
   .el-table__header-wrapper th.el-table__cell {
     text-align: center;
-    /* Center header text on larger screens */
     padding: 12px 15px;
-    /* Revert/Adjust padding for larger screens */
   }
 
   .tablecsv+div {
@@ -260,17 +240,12 @@ button {
   }
 
   .el-overlay.is-message-box {
-    /* Flexbox centering remains active */
     background-color: rgba(0, 0, 0, 0.5);
-    /* Keep backdrop */
   }
 
   .el-message-box {
     width: 500px;
-    /* Revert to fixed width or adjust max-width */
     max-width: none;
-    /* Remove max-width */
-    /* Remove top, left, transform */
   }
 
   .el-message-box__header {
@@ -287,7 +262,6 @@ button {
 
   .el-message-box__container {
     max-height: calc(80vh - 120px);
-    /* Revert calculation */
     padding-right: 10px;
   }
 

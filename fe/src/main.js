@@ -8,14 +8,14 @@ import router from './router';
 import * as ElementPlusIconsVue from '@element-plus/icons-vue';
 import {VueCsvImportPlugin} from "vue-csv-import";
 
-const app = createApp(App); // Create the Vue application instance first
+const app = createApp(App);
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-  app.component(key, component); // Register icons on the app instance
+  app.component(key, component); 
 }
 
-app.use(ElementPlus); // Use Element Plus on the app instance
+app.use(ElementPlus); 
 app.use(router); 
 app.use(VueCsvImportPlugin)
 
-app.mount('#app'); // Mount the application to the DOM
+app.mount('#app'); 

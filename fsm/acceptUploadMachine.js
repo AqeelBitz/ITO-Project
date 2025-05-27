@@ -7,7 +7,6 @@ export const acceptUploadMachine = setup({
       console.log("inside uploadRequest: ", input);
       console.log("-----------------------------");
       const Authorizationtoken = input.authToken;
-      // console.log("token: ",token);
       const headersToSend = {
         'Content-Type': 'application/json',
         'Authorization': Authorizationtoken
