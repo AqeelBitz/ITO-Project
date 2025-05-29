@@ -260,9 +260,7 @@ const resetForm = () => {
   branchCodeError.value = '';
 };
 
-const closeMessageBox = () => {
-  showMessageBox.value = false;
-};
+
 </script>
 
 <style scoped>
@@ -470,7 +468,7 @@ const closeMessageBox = () => {
 }
 
 .bahl-logo-img {
-  width: 27vw;
+  width: 34vw;
   vertical-align: middle;
 }
 

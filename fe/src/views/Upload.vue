@@ -1579,7 +1579,7 @@ const acceptAllData = async () => {
 
 .custom-button {
   background-color: rgb(0, 155, 131);
-  color: var(--balh-white);
+  color: black;
   padding: 10px 20px;
   border-radius: 4px;
   border: none;
