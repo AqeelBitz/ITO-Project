@@ -86,7 +86,7 @@ const roleId = authResponse ? authResponse.roleId : null;
   padding: 2rem;
   font-family: 'Arial', sans-serif; /* Using a common, clean font */
   background-color: var(--balh-light-grey-bg);
-  color: var(--balh-grey-text);
+  /* color: var(--balh-grey-text); */
 }
 
 .balh-header {
@@ -109,7 +109,7 @@ const roleId = authResponse ? authResponse.roleId : null;
 
 .balh-title {
   font-size: 2.2rem;
-  color: var(--balh-primary-green);
+  /* color: var(--balh-primary-green); */
   font-weight: 700;
   margin: 0; /* Remove default margin */
 }

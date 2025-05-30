@@ -30,8 +30,8 @@
                 </el-select>
                 <el-input v-model="input" placeholder="Please input" @keyup.enter="searchButton"
                   class="input-field"></el-input>
-                <el-button class="custom-button" @click="searchButton">Search</el-button>
-                <el-button class="custom-button" @click="openReportModal">View History</el-button>
+                <el-button class="custom-button" id="file_input" @click="searchButton">Search</el-button>
+                <el-button class="custom-button" id="file_input" @click="openReportModal">View History</el-button>
               </div>
             </div>
             <div class="table-container p-datatable" v-if="tableData.length">
@@ -352,10 +352,10 @@ const searchButton = async () => {
     tableData.value = [];
     return;
   }
-  const tokenExpiration = localStorage.getItem("tokenExpiration") ? parseInt(localStorage.getItem("tokenExpiration")) : 0;
-  const authToken = localStorage.getItem("authToken") ? localStorage.getItem("authToken") : "";
+  const authToken = localStorage.getItem("authResponse") ? JSON.parse(localStorage.getItem("authResponse"))?.token : "";
   const authResponse = localStorage.getItem("authResponse") ? localStorage.getItem("authResponse") : "";
-  if (tokenExpiration >= Date.now() && tokenExpiration !==0 && authToken !=="" && authResponse !=="") {
+  const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
+  if (tokenExpiration >= Date.now() && tokenExpiration !==0 && authToken !=="" && authResponse !=="")  {
     let apiUrl = `http://localhost:3001/fsm/consignments/search?${select.value}=${encodeURIComponent(input.value)}`;
     const authToken = JSON.parse(localStorage.getItem("authResponse"))?.token;
     const headers = {
@@ -483,6 +483,13 @@ const multipleTableRef = ref<TableInstance | null>(null);
 </script>
 
 <style scoped>
+#file_input {
+  background-color: rgb(0, 155, 131);
+  color: black;
+  border: 0.5px solid rgb(0, 155, 131);
+  font-size: 1em;
+}
+
 .generate-button {
   border-color: rgb(0, 155, 131);
   background-color: rgb(0, 155, 131);

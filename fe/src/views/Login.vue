@@ -154,7 +154,7 @@ const validateBranchCode = () => {
 
 const callApi = async () => {
   try {
-    const response = await fetch('http://localhost:3001/fsm/login', {
+    const response = await fetch('http://10.51.41.13:3001/fsm/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

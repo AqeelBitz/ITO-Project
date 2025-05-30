@@ -29,7 +29,7 @@
           </el-upload>
         </div>
         <div>
-          <el-button class="custom-button" @click="openReportModal">View History</el-button>
+          <el-button id="file_input" class="custom-button" @click="openReportModal">View History</el-button>
         </div>
       </div>
       <el-dialog v-model="reportModalVisible" title="Generate File Upload History Report" width="30%" center
@@ -838,8 +838,10 @@ const triggerAcceptApiCall = async (dataArray) => {
   const acceptUrl = `${apiUrl}accept?${params.toString()}`;
 
 
+  const authToken = localStorage.getItem("authResponse") ? JSON.parse(localStorage.getItem("authResponse"))?.token : "";
+  const authResponse = localStorage.getItem("authResponse") ? localStorage.getItem("authResponse") : "";
   const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
-  if (tokenExpiration >= Date.now() && tokenExpiration != NaN) {
+  if (tokenExpiration >= Date.now() && tokenExpiration !==0 && authToken !=="" && authResponse !=="")  {
     try {
       const data = await makeApiRequest(acceptUrl, "POST", headers, dataArray);
 
@@ -997,8 +999,11 @@ const rejectAllData = async () => {
   if (rejectedRows.value.length > 0) params.append('rejectedRows', rejectedRowsParam);
   params.append('acceptedRows', '[]');
   const rejectUrl = `${apiUrl}reject?${params.toString()}`;
+
+  const authToken = localStorage.getItem("authResponse") ? JSON.parse(localStorage.getItem("authResponse"))?.token : "";
+  const authResponse = localStorage.getItem("authResponse") ? localStorage.getItem("authResponse") : "";
   const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
-  if (tokenExpiration >= Date.now()) {
+  if (tokenExpiration >= Date.now() && tokenExpiration !==0 && authToken !=="" && authResponse !=="")  {
     try {
       const data = await makeApiRequest(rejectUrl, "POST", headers);
 
@@ -1060,19 +1065,22 @@ const rejectAllData = async () => {
   }
 };
 
-const checkColumnValidation=(columnKey, originalRow, rowIsValid, currentValidationErrors,i)=>{
+const checkColumnValidation = (columnKey, originalRowValue, currentRowIsValid, currentValidationErrors, i) => {
+  let columnCheckResult = currentRowIsValid; // Start with the current row validity
+
   if (columnKey) {
-      if (originalRow === null || originalRow === undefined || originalRow.toString().trim() === '' ) {
-        rowIsValid = false;
-        currentValidationErrors.push({
-          rowIndex: i,
-          columnName: columnKey,
-          value: '',
-          message: `Invalid value ${originalRow} entered.`
-        });
-      } 
+    if (originalRowValue === null || originalRowValue === undefined || originalRowValue.toString().trim() === '') {
+      columnCheckResult = false; // Mark column as invalid
+      currentValidationErrors.push({
+        rowIndex: i,
+        columnName: columnKey,
+        value: originalRowValue,
+        message: `Invalid value ${originalRowValue} entered.`
+      });
     }
-}
+  }
+  return columnCheckResult; // Return the updated row validity
+};
 
 const acceptAllData = async () => {
   errorMessage.value = null;
@@ -1085,12 +1093,11 @@ const acceptAllData = async () => {
   dataToSendToApi.value = [];
   validationErrors.value = [];
 
-
   if (mappedObjects.value.length === 0 || !fileName.value) {
     messageBoxTitle.value = "Info";
     messageBoxType.value = "info";
     messageBoxContent.value = "No data or file selected to accept. Please upload a valid CSV file with data.";
-    messageBoxPurpose.value = 'apiResponse'; 
+    messageBoxPurpose.value = 'apiResponse';
     showMessageBox.value = true;
     return;
   }
@@ -1099,8 +1106,8 @@ const acceptAllData = async () => {
     messageBoxTitle.value = "Warning";
     messageBoxType.value = "warning";
     messageBoxContent.value = `Cannot process invalid file type. Please upload a file with 7, 8, or 16 columns.`;
-    messageBoxPurpose.value = 'apiResponse'; 
-    resetAfterProcess(); 
+    messageBoxPurpose.value = 'apiResponse';
+    resetAfterProcess();
     return;
   }
 
@@ -1111,11 +1118,11 @@ const acceptAllData = async () => {
   const currentRejectedRowsIndices = [];
   const currentAcceptedRowsIndices = [];
 
-
   for (let i = 0; i < recordsToProcess.length; i++) {
     const originalRow = recordsToProcess[i];
     const formattedObj = { ...originalRow };
-    let rowIsValid = true; 
+    let rowIsValid = true; // Initialize for each row
+
     const consignmentIdKey = headingMap["consignment number"];
     const accountnumberKey = headingMap["account number"];
     const accounttitleKey = headingMap["account title"];
@@ -1137,6 +1144,8 @@ const acceptAllData = async () => {
     const relationshipKey = headingMap["relationship"];
     const cardstatusKey = headingMap["card status"];
     const customercnicnumberKey = headingMap["customer cnic number"];
+
+    // Consignment ID validation (moved inside the main loop for clarity)
     if (consignmentIdKey) {
       const rawConsignmentValue = originalRow[consignmentIdKey];
       if (rawConsignmentValue === null || rawConsignmentValue === undefined || rawConsignmentValue.toString().trim() === '' || isNaN(rawConsignmentValue)) {
@@ -1147,55 +1156,58 @@ const acceptAllData = async () => {
           value: rawConsignmentValue,
           message: "Invalid consignment ID. Must be a number."
         });
-      } 
+      }
     }
 
     let dateFieldsToValidate = [];
-    let optionalDateFields = []; 
+    let optionalDateFields = [];
 
     if (file_id === 1) {
-      checkColumnValidation(accountnumberKey, originalRow[accountnumberKey],rowIsValid,currentValidationErrors, i);
-      checkColumnValidation(accounttitleKey,originalRow[accounttitleKey],rowIsValid,currentValidationErrors, i);
-      checkColumnValidation(customercnicnumberKey,originalRow[customercnicnumberKey],rowIsValid,currentValidationErrors, i);
-      checkColumnValidation(shippingBillKey,originalRow[shippingBillKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(courierKey,originalRow[courierKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(addressKey,originalRow[addressKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(cityKey,originalRow[cityKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(emailKey,originalRow[emailKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(mobilenumberKey,originalRow[mobilenumberKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(letterTypeKey,originalRow[letterTypeKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(cardnumberKey,originalRow[cardnumberKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(typeofcardKey,originalRow[typeofcardKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(statusKey,originalRow[statusKey],rowIsValid,currentValidationErrors,i);
+      rowIsValid = checkColumnValidation(accountnumberKey, originalRow[accountnumberKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(accounttitleKey, originalRow[accounttitleKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(customercnicnumberKey, originalRow[customercnicnumberKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(shippingBillKey, originalRow[shippingBillKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(courierKey, originalRow[courierKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(addressKey, originalRow[addressKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(cityKey, originalRow[cityKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(emailKey, originalRow[emailKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(mobilenumberKey, originalRow[mobilenumberKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(letterTypeKey, originalRow[letterTypeKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(cardnumberKey, originalRow[cardnumberKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(typeofcardKey, originalRow[typeofcardKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(statusKey, originalRow[statusKey], rowIsValid, currentValidationErrors, i);
+
       dateFieldsToValidate = [
         headingMap["booking date"],
         headingMap["card creation date"]
       ].filter(key => key !== undefined);
-    } else if (file_id === 2) { 
-      checkColumnValidation(courierKey,originalRow[courierKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(statusKey,originalRow[statusKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(receivernamedKey,originalRow[receivernamedKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(cardstatusKey,originalRow[cardstatusKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(relationshipKey,originalRow[relationshipKey],rowIsValid,currentValidationErrors,i);
+    } else if (file_id === 2) {
+      rowIsValid = checkColumnValidation(courierKey, originalRow[courierKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(statusKey, originalRow[statusKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(receivernamedKey, originalRow[receivernamedKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(cardstatusKey, originalRow[cardstatusKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(relationshipKey, originalRow[relationshipKey], rowIsValid, currentValidationErrors, i);
+
       dateFieldsToValidate = [
         headingMap["delivery date"]
       ].filter(key => key !== undefined);
     } else if (file_id === 3) {
-      checkColumnValidation(returnreasonKey,originalRow[returnreasonKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(branchcodeKey,originalRow[branchcodeKey],rowIsValid,currentValidationErrors,i);
-      checkColumnValidation(receivernamebKey,originalRow[receivernamebKey],rowIsValid,currentValidationErrors,i);
+      rowIsValid = checkColumnValidation(returnreasonKey, originalRow[returnreasonKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(branchcodeKey, originalRow[branchcodeKey], rowIsValid, currentValidationErrors, i);
+      rowIsValid = checkColumnValidation(receivernamebKey, originalRow[receivernamebKey], rowIsValid, currentValidationErrors, i);
+
       dateFieldsToValidate = [
         headingMap["date of return shipment received at branch"]
       ].filter(key => key !== undefined);
     }
 
     dateFieldsToValidate.forEach(dateKey => {
-      if (dateKey) { 
+      if (dateKey) {
         const rawDate = originalRow[dateKey];
         const formattedDate = formatDate(rawDate);
 
         if (formattedDate === null && !optionalDateFields.includes(dateKey)) {
-          rowIsValid = false; 
+          rowIsValid = false;
           currentValidationErrors.push({
             rowIndex: i,
             columnName: dateKey,
@@ -1204,7 +1216,7 @@ const acceptAllData = async () => {
           });
           formattedObj[dateKey] = null;
         } else {
-          formattedObj[dateKey] = formattedDate; 
+          formattedObj[dateKey] = formattedDate;
         }
       }
     });
@@ -1217,13 +1229,12 @@ const acceptAllData = async () => {
     }
   }
 
-
   validationErrors.value = currentValidationErrors;
   rejectedRows.value = currentRejectedRowsIndices;
   acceptedRows.value = currentAcceptedRowsIndices;
-  dataToSendToApi.value = currentAcceptedDataForApi; 
+  dataToSendToApi.value = currentAcceptedDataForApi;
 
-  isLoading.value = false; 
+  isLoading.value = false;
 
   if (validationErrors.value.length > 0) {
     messageBoxTitle.value = "Validation Errors Found";

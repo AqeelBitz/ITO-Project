@@ -3,7 +3,6 @@ import { createActor } from 'xstate';
 import { appMachine } from './loginMachine.js';
 import {acceptUploadMachine} from './acceptUploadMachine.js'
 import {rejectUploadMachine} from './rejectUploadMachine.js'
-import { handler } from './handler.js';
 import { searchMachine } from "./searchMachine.js";
 import cors from 'cors';
 
@@ -219,5 +218,5 @@ app.get("/fsm/consignments/search",
   });
 
 app.listen(3001, () => {
-  console.log('FSM Server running at http://localhost:3001');
+  console.log('FSM Server running at http://10.51.41.13:3001');
 });
