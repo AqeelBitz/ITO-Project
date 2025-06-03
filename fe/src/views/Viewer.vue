@@ -239,7 +239,7 @@ const viewReport = async () => {
           'Authorization': `Bearer ${authToken}`,
         }
       });
-
+      console.log("Response: ", response)
       if (!response.ok) {
         const contentType = response.headers.get('Content-Type');
         let errorBody: any = null;
@@ -483,6 +483,9 @@ const multipleTableRef = ref<TableInstance | null>(null);
 </script>
 
 <style scoped>
+.cancel-btn:hover{
+  color:#606266;
+}
 #file_input {
   background-color: rgb(0, 155, 131);
   color: black;
@@ -500,6 +503,7 @@ const multipleTableRef = ref<TableInstance | null>(null);
 .generate-button:hover:not(.disabled) {
   background-color: rgb(0, 155, 131);
   transform: translateY(-2px);
+  color: white;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 

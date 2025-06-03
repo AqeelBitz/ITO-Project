@@ -86,7 +86,8 @@ const rules = computed(() => ({
 }));
 
 const formatBranchCode = () => {
-  if (formData.branchCd) {
+  
+  if (formData.branchCd && formData.branchCd!=='') {
     formData.branchCd = formData.branchCd.padStart(4, '0');
   }
 };
@@ -96,7 +97,8 @@ const isFormFilled = computed(() => {
   return formData.username.trim() !== '' && formData.password.trim() !== '' && formData.branchCd.trim() !== '';
 });
 const checkDigits = (event) => {
-  if (
+  if(formData.branchCd!==''){
+ if (
     event.key.length === 1 &&
     (
       isNaN(Number(event.key)) ||
@@ -105,6 +107,7 @@ const checkDigits = (event) => {
   ) {
     event.preventDefault();
   }
+}
 }
 
 const handleMessageBoxClose = () => {
@@ -154,7 +157,7 @@ const validateBranchCode = () => {
 
 const callApi = async () => {
   try {
-    const response = await fetch('http://10.51.41.13:3001/fsm/login', {
+    const response = await fetch('http://localhost:3001/fsm/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

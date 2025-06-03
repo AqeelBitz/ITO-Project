@@ -36,8 +36,8 @@
         :close-on-click-modal="false" :close-on-press-escape="false" @close="closeModal">
         <div class="modal-content">
           <p>Please select the date range for the report.</p>
-          <el-date-picker v-model="fromDatePicker" :disabled-date="disableToDate" type="date" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
-            placeholder="From Date" style="margin-right: 10px; margin-bottom: 10px;" />
+          <el-date-picker v-model="fromDatePicker" :disabled-date="disableToDate" type="date" format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD" placeholder="From Date" style="margin-right: 10px; margin-bottom: 10px;" />
           <el-date-picker v-model="toDatePicker" :disabled-date="disableToDate" type="date" format="YYYY-MM-DD"
             value-format="YYYY-MM-DD" placeholder="To Date" style="margin-right: 10px;" />
           <div v-if="dateErrorMessage" class="error-message">
@@ -49,7 +49,7 @@
         </div>
         <template #footer>
           <span class="dialog-footer">
-            <el-button @click="closeModal">Cancel</el-button>
+            <el-button class="cancel-btn" @click="closeModal">Cancel</el-button>
             <el-button class="generate-button" @click="viewReport" :loading="isGeneratingReport">
               {{ isGeneratingReport ? 'Generating...' : 'Generate Report' }}
             </el-button>
@@ -134,7 +134,7 @@ import Papa from 'papaparse';
 import MessageBox from './MessageBox.vue';
 import { useRouter } from 'vue-router';
 import { UploadFilled } from '@element-plus/icons-vue'
-import { Loading } from '@element-plus/icons-vue' 
+import { Loading } from '@element-plus/icons-vue'
 const reportModalVisible = ref(false);
 const isGeneratingReport = ref(false);
 const reportError = ref(null);
@@ -154,7 +154,7 @@ const dataToSendToApi = ref([]);
 const validationErrors = ref([]);
 const rejectedRows = ref([]);
 const acceptedRows = ref([]);
-const isDragging = ref(false); 
+const isDragging = ref(false);
 
 
 let file_id = 0;
@@ -168,7 +168,7 @@ const dateErrorMessage = ref(null);
 const fromDatePicker = ref(null);
 const toDatePicker = ref(null);
 const sessionExpired = ref(false);
- 
+
 const disableToDate = (date) => {
   return date > today;
 };
@@ -211,7 +211,7 @@ const viewReport = async () => {
   const authToken = localStorage.getItem("authResponse") ? JSON.parse(localStorage.getItem("authResponse"))?.token : "";
   const authResponse = localStorage.getItem("authResponse") ? localStorage.getItem("authResponse") : "";
   const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
-  if (tokenExpiration >= Date.now() && tokenExpiration !==0 && authToken !=="" && authResponse !=="") {
+  if (tokenExpiration >= Date.now() && tokenExpiration !== 0 && authToken !== "" && authResponse !== "") {
     try {
       const username = JSON.parse(localStorage.getItem("authResponse")).userName;
       const design = 'cts_report.rptdesign';
@@ -250,8 +250,8 @@ const viewReport = async () => {
             body: errorBody
           };
         }
-        isGeneratingReport.value = false; 
-        return; 
+        isGeneratingReport.value = false;
+        return;
       }
 
       const reportBlob = await response.blob();
@@ -272,7 +272,7 @@ const viewReport = async () => {
 
     } catch (error) {
       console.error("Error fetching report:", error);
-      isGeneratingReport.value = false; 
+      isGeneratingReport.value = false;
       if (error && error.status === 401) {
         reportError.value = "Unauthorized: Your session may have expired or you lack permission. Please log in again.";
       } else if (error && error.status) {
@@ -284,7 +284,7 @@ const viewReport = async () => {
         reportError.value = "Failed to generate the report due to an unexpected error.";
       }
     } finally {
-      isGeneratingReport.value = false; 
+      isGeneratingReport.value = false;
     }
   } else {
     tableData.value = [];
@@ -305,12 +305,12 @@ const onDragOver = (event) => {
 };
 
 const onDragLeave = (event) => {
-  event.preventDefault(); 
+  event.preventDefault();
   isDragging.value = false;
 };
 
 const onDrop = (event) => {
-  event.preventDefault(); 
+  event.preventDefault();
   isDragging.value = false;
   const droppedFiles = event.dataTransfer.files;
   if (droppedFiles.length > 0) {
@@ -326,7 +326,7 @@ const headingMap = {
   "booking date": "booking_date",
   "account number": "account_no",
   "account title": "account_title",
-  "receiver's cnic": "receiver_cnic", 
+  "receiver's cnic": "receiver_cnic",
   "sb/ cb": "shipping_bill",
   "address": "address",
   "city": "city",
@@ -338,6 +338,7 @@ const headingMap = {
   "card creation date": "card_creation_date",
   "return reason": "return_reason",
   "date of return shipment received at branch": "return_date",
+  "return date": "return_date_courier",
   "branch code": "branch_cd",
   "receiver name b": "receiver_name_b",
   "delivery date": "delivery_date",
@@ -497,9 +498,9 @@ const processFiles = (files) => {
   reader.onerror = (error) => {
     errorMessage.value = `File reading error: ${error}`;
     messageBoxContent.value = `File reading error: ${error}`;
-        messageBoxTitle.value = 'Unable to read file';
-        messageBoxType.value = 'error';
-        showMessageBox.value = true;
+    messageBoxTitle.value = 'Unable to read file';
+    messageBoxType.value = 'error';
+    showMessageBox.value = true;
     mappedObjects.value = [];
     tableData.value = [];
     columns.value = [];
@@ -515,9 +516,9 @@ const handleFileChange = (uploadFile) => {
     processFiles(uploadFile.raw);
   } else {
     messageBoxContent.value = 'File is not properly loaded from upload input.';
-        messageBoxTitle.value = 'Unable to load file';
-        messageBoxType.value = 'error';
-        showMessageBox.value = true;
+    messageBoxTitle.value = 'Unable to load file';
+    messageBoxType.value = 'error';
+    showMessageBox.value = true;
     fileName.value = '';
     tableData.value = [];
     columns.value = [];
@@ -553,22 +554,22 @@ const triggerFileUpload = () => {
   } else {
     console.error("uploadRef is not available.");
     messageBoxContent.value = "Upload component not initialized correctly.";
-        messageBoxTitle.value = 'Error in upload component';
-        messageBoxType.value = 'error';
-        showMessageBox.value = true;
+    messageBoxTitle.value = 'Error in upload component';
+    messageBoxType.value = 'error';
+    showMessageBox.value = true;
   }
 };
 
 
 const formatDate = (dateString) => {
   if (!dateString) {
-    return null; 
+    return null;
   }
 
   const trimmedDateString = dateString.trim();
 
   if (trimmedDateString === '') {
-    return null; 
+    return null;
   }
 
 
@@ -581,7 +582,7 @@ const formatDate = (dateString) => {
       const dayInt = parseInt(day, 10);
       const monthInt = parseInt(month, 10);
       if (dayInt >= 1 && dayInt <= 31 && monthInt >= 1 && monthInt <= 12) {
-        const formattedDate = `${year}-${month}-${day}`; 
+        const formattedDate = `${year}-${month}-${day}`;
         return formattedDate;
       }
     }
@@ -618,7 +619,7 @@ const formatDate = (dateString) => {
       const part2Int = parseInt(part2, 10);
 
       if (part1Int >= 1 && part1Int <= 12 && part2Int >= 1 && part2Int <= 31) {
-        let date = new Date(`${year}-${part1}-${part2}`); 
+        let date = new Date(`${year}-${part1}-${part2}`);
         if (!isNaN(date.getTime())) {
           const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
           return formattedDate;
@@ -626,7 +627,7 @@ const formatDate = (dateString) => {
       }
 
       if (part2Int >= 1 && part2Int <= 12 && part1Int >= 1 && part1Int <= 31) {
-        let date = new Date(`${year}-${part2}-${part1}`); 
+        let date = new Date(`${year}-${part2}-${part1}`);
         if (!isNaN(date.getTime())) {
           const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
           return formattedDate;
@@ -635,7 +636,7 @@ const formatDate = (dateString) => {
     }
   }
 
-  return null; 
+  return null;
 };
 
 const createMappedObjects = (headers, data) => {
@@ -643,12 +644,13 @@ const createMappedObjects = (headers, data) => {
   data.forEach((row, index) => {
     const obj = {};
     headers.forEach((header) => {
-      const mappedKey = headingMap[header.toLowerCase().trim()];
+      const normalizedHeader = header.toLowerCase().trim().replace(/\s+/g, ' ');
+      const mappedKey = headingMap[normalizedHeader];
       if (mappedKey) {
         obj[mappedKey] = row[header];
       }
     });
-    obj._originalIndex = index; 
+    obj._originalIndex = index;
     mapped.push(obj);
   });
   return mapped;
@@ -671,15 +673,15 @@ const formatValidationErrorMessage = (errors) => {
 
   sortedRowIndices.forEach(rowIndex => {
     const rowErrors = errorsByRowIndex[rowIndex];
-    message += `<br>Row ${parseInt(rowIndex) + 1}:<br>`; 
+    message += `<br>Row ${parseInt(rowIndex) + 1}:<br>`;
     rowErrors.forEach(err => {
       const originalColumnNameEntry = Object.entries(headingMap).find(([key, value]) => value === err.columnName);
       const displayColumnName = originalColumnNameEntry ? originalColumnNameEntry[0] : err.columnName;
 
-      if(err.value){
+      if (err.value) {
         message += `- Invalid '${displayColumnName}' value: "${err.value}". ${err.message}<br>`;
-      }else{
-        message += `- Invalid '${displayColumnName}' value <br>`;  
+      } else {
+        message += `- Invalid '${displayColumnName}' value <br>`;
       }
     });
   });
@@ -781,9 +783,9 @@ const handleMessageBoxClose = () => {
 
   if (messageBoxPurpose.value === 'validation') {
     if (dataToSendToApi.value && dataToSendToApi.value.length > 0) {
-      if(sessionExpired.value){
+      if (sessionExpired.value) {
         resetAfterProcess();
-      }else{
+      } else {
         triggerAcceptApiCall(dataToSendToApi.value);
       }
 
@@ -841,7 +843,7 @@ const triggerAcceptApiCall = async (dataArray) => {
   const authToken = localStorage.getItem("authResponse") ? JSON.parse(localStorage.getItem("authResponse"))?.token : "";
   const authResponse = localStorage.getItem("authResponse") ? localStorage.getItem("authResponse") : "";
   const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
-  if (tokenExpiration >= Date.now() && tokenExpiration !==0 && authToken !=="" && authResponse !=="")  {
+  if (tokenExpiration >= Date.now() && tokenExpiration !== 0 && authToken !== "" && authResponse !== "") {
     try {
       const data = await makeApiRequest(acceptUrl, "POST", headers, dataArray);
 
@@ -1003,7 +1005,7 @@ const rejectAllData = async () => {
   const authToken = localStorage.getItem("authResponse") ? JSON.parse(localStorage.getItem("authResponse"))?.token : "";
   const authResponse = localStorage.getItem("authResponse") ? localStorage.getItem("authResponse") : "";
   const tokenExpiration = parseInt(localStorage.getItem("tokenExpiration"));
-  if (tokenExpiration >= Date.now() && tokenExpiration !==0 && authToken !=="" && authResponse !=="")  {
+  if (tokenExpiration >= Date.now() && tokenExpiration !== 0 && authToken !== "" && authResponse !== "") {
     try {
       const data = await makeApiRequest(rejectUrl, "POST", headers);
 
@@ -1049,7 +1051,7 @@ const rejectAllData = async () => {
       showMessageBox.value = true;
     }
     finally {
-      isLoading.value = false; 
+      isLoading.value = false;
     }
   } else {
     tableData.value = [];
@@ -1066,22 +1068,89 @@ const rejectAllData = async () => {
 };
 
 const checkColumnValidation = (columnKey, originalRowValue, currentRowIsValid, currentValidationErrors, i) => {
-  let columnCheckResult = currentRowIsValid; // Start with the current row validity
+  let columnCheckResult = currentRowIsValid;
 
   if (columnKey) {
-    if (originalRowValue === null || originalRowValue === undefined || originalRowValue.toString().trim() === '') {
-      columnCheckResult = false; // Mark column as invalid
+    const valueAsString = String(originalRowValue || '').trim();
+
+    if (valueAsString === '') {
+      columnCheckResult = false;
       currentValidationErrors.push({
         rowIndex: i,
         columnName: columnKey,
         value: originalRowValue,
-        message: `Invalid value ${originalRowValue} entered.`
+        message: `Value for '${columnKey}' cannot be empty.`
       });
+    } else {
+      const maxLengths = {
+        [headingMap["account number"]]: 30,
+        [headingMap["receiver's cnic"]]: 15,
+        [headingMap["mobile number"]]: 15,
+        [headingMap["email"]]: 255,
+        [headingMap["card number"]]: 19,
+        [headingMap["shipping bill"]]: 50,
+        [headingMap["address"]]: 255,
+        [headingMap["city"]]: 50,
+        [headingMap["account title"]]: 100,
+        [headingMap["courier"]]: 50,
+        [headingMap["letter type"]]: 50,
+        [headingMap["type of card"]]: 50,
+        [headingMap["return reason"]]: 255,
+        [headingMap["branch code"]]: 20,
+        [headingMap["receiver name b"]]: 100,
+        [headingMap["status"]]: 50,
+        [headingMap["receiver name d"]]: 100,
+        [headingMap["relationship"]]: 50,
+        [headingMap["card status"]]: 50,
+        [headingMap["customer cnic number"]]: 15,
+      };
+
+      const maxLength = maxLengths[columnKey];
+
+      if (columnKey === headingMap["consignment number"]) {
+        if (valueAsString.includes('E+') || valueAsString.includes('e+')) {
+          columnCheckResult = false;
+          currentValidationErrors.push({
+            rowIndex: i,
+            columnName: columnKey,
+            value: originalRowValue,
+            message: `'${columnKey}' cannot be in scientific notation. Please provide a valid numeric ID.`
+          });
+        } else if (!/^\d+$/.test(valueAsString)) {
+          columnCheckResult = false;
+          currentValidationErrors.push({
+            rowIndex: i,
+            columnName: columnKey,
+            value: originalRowValue,
+            message: `'${columnKey}' must contain only digits.`
+          });
+        }
+      } else if (columnKey === headingMap["receiver's cnic"] || columnKey === headingMap["customer cnic number"]) {
+        // Updated regex for CNIC: XXXXX-XXXXXXX-X (5 digits, 7 digits, 1 digit, with hyphens)
+        if (!/^\d{5}-\d{7}-\d{1}$/.test(valueAsString)) {
+          columnCheckResult = false;
+          currentValidationErrors.push({
+            rowIndex: i,
+            columnName: columnKey,
+            value: originalRowValue,
+            message: `'${columnKey}' must be in the format XXXXX-XXXXXXX-X (e.g., 12345-6789012-3).`
+          });
+        }
+      } else { // This else block now applies to all other columns except consignment number and CNIC
+        if (maxLength !== undefined && valueAsString.length > maxLength) {
+          columnCheckResult = false;
+          currentValidationErrors.push({
+            rowIndex: i,
+            columnName: columnKey,
+            value: originalRowValue,
+            message: `'${columnKey}' length (${valueAsString.length}) exceeds the maximum allowed length of ${maxLength}.`
+          });
+        }
+      }
     }
   }
-  return columnCheckResult; // Return the updated row validity
+  return columnCheckResult;
 };
-
 const acceptAllData = async () => {
   errorMessage.value = null;
   rejectedRows.value = [];
@@ -1145,7 +1214,6 @@ const acceptAllData = async () => {
     const cardstatusKey = headingMap["card status"];
     const customercnicnumberKey = headingMap["customer cnic number"];
 
-    // Consignment ID validation (moved inside the main loop for clarity)
     if (consignmentIdKey) {
       const rawConsignmentValue = originalRow[consignmentIdKey];
       if (rawConsignmentValue === null || rawConsignmentValue === undefined || rawConsignmentValue.toString().trim() === '' || isNaN(rawConsignmentValue)) {
@@ -1156,6 +1224,18 @@ const acceptAllData = async () => {
           value: rawConsignmentValue,
           message: "Invalid consignment ID. Must be a number."
         });
+      }
+      else {
+        const valueAsString = String(originalRow[consignmentIdKey]);
+        if (consignmentIdKey === "consignment_id" && valueAsString.length > 13) {
+          rowIsValid = false;
+          currentValidationErrors.push({
+            rowIndex: i,
+            columnName: consignmentIdKey,
+            value: originalRow[consignmentIdKey],
+            message: `consignment number length exceeded.`
+          });
+        }
       }
     }
 
@@ -1197,7 +1277,8 @@ const acceptAllData = async () => {
       rowIsValid = checkColumnValidation(receivernamebKey, originalRow[receivernamebKey], rowIsValid, currentValidationErrors, i);
 
       dateFieldsToValidate = [
-        headingMap["date of return shipment received at branch"]
+        headingMap["date of return shipment received at branch"],
+        headingMap["return date"],
       ].filter(key => key !== undefined);
     }
 
@@ -1251,6 +1332,10 @@ const acceptAllData = async () => {
 </script>
 
 <style scoped>
+.cancel-btn:hover {
+  color: #606266;
+}
+
 .balh-btn.back-btn:hover:not(.disabled) {
   background-color: #afb9c0;
   transform: translateY(-3px);
@@ -1271,6 +1356,7 @@ const acceptAllData = async () => {
 
 .generate-button:hover:not(.disabled) {
   background-color: rgb(0, 155, 131);
+  color: white;
   transform: translateY(-2px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }

@@ -68,6 +68,7 @@ app.post('/fsm/consignments/accept', async (req, res) => {
   const payload = allConsginment.map(consignment => ({
     consignment_id: consignment.consignment_id,
     courier: consignment.courier,
+    return_date_courier: consignment.return_date_courier,
     booking_date: consignment.booking_date,
     account_no: consignment.account_no,
     account_title: consignment.account_title,
@@ -218,5 +219,5 @@ app.get("/fsm/consignments/search",
   });
 
 app.listen(3001, () => {
-  console.log('FSM Server running at http://10.51.41.13:3001');
+  console.log('FSM Server running at http://localhost:3001');
 });

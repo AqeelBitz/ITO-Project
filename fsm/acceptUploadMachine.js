@@ -79,6 +79,7 @@ export const acceptUploadMachine = setup({
               card_creation_date: item.card_creation_date,
               return_reason: item.return_reason,
               return_date: item.return_date,
+              return_date_courier: item.return_date_courier,
               branch_cd: item.branch_cd,
               receiver_name_b: item.receiver_name_b,
               delivery_date: item.delivery_date,
